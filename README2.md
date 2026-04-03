@@ -54,3 +54,17 @@ python -m agents.hello_claude
 - Add nice README section: setup, run, agent-mode, test-mode
 - Add conftest.py fixtures for playwright browser and API mocks.
 - Add fallback to no-API mode for CI: stub BaseAgent.call_claude() if no credit.
+
+# Agents
+Agent 1 — test reader
+Agent 2 — BDD generator
+Approval gateway
+Wire 1+2+gateway together
+Agent 3 — self-healer
+Agent 4 — failure analysis
+Failure logger (pytest plugin)
+End-to-end smoke test
+
+Every agent follows the same pattern. Input file → Claude prompt → output file → approval gate → git commit. 
+Mock mode means nothing blocks you. Every agent has a MOCK_MODE = True flag at the top. It returns realistic hardcoded output so the full workflow runs — approval gate, file writing, git commit — all of it works today regardless of API credits. 
+The approval gateway is the most important piece. It's what makes this framework safe and portfolio-worthy. Nothing touches your codebase without your explicit sign-off.
