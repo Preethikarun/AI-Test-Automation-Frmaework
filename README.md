@@ -64,11 +64,12 @@ Write-Host "Init files created!"
 
 pip freeze > requirements.txt 
 
-# saves every installed package and version to requirements.txt — so anyone cloning your repo can run pip install -r requirements.txt and get the exact same environment
+saves every installed package and version to requirements.txt — so anyone cloning your repo can run pip install -r requirements.txt and get the exact same environment
 ***************************************************************************
 
 ## Add __init__.py to each folder
-# Python needs an empty __init__.py in each folder to treat it as a module — so your imports work correctly when agents reference page objects and locators
+
+Python needs an empty __init__.py in each folder to treat it as a module — so your imports work correctly when agents reference page objects and locators
 
 @("agents","locators","pages","features",
 "tests","steps","fixtures") | ForEach-Object {
@@ -76,18 +77,24 @@ pip freeze > requirements.txt
 }
 Write-Host "Init files created!"
 ****************************************************************************
- ## Running Tests 
- # Run all 4 tests with verbose output
+ # Running Tests 
+ ## Run all 4 tests with verbose output
 pytest tests/ -v
 
-# Run headed (see the browser open) — great for learning
+## Run headed (see the browser open) — great for learning
 pytest tests/ -v --headed
 
-# Run just one test by name
+## Run just one test by name
 pytest tests/test_todo.py::TestTodoApp::test_add_single_item -v
+
+## Run with HAR replay active
+pytest tests/ -v -s
+
+The -s flag shows print statements
+You should see: "HAR replay active: har/todo_app.har"
+
 ****************************************************************************
-## What is HAR and why it matters
-# Record once — replay forever
+## What is HAR and why it matters - Record once — replay forever
 HAR (HTTP Archive) is a recording of every network request your app makes. Once recorded, Playwright replays it — your tests run even with no internet, no live server, no flaky API responses. This is how enterprise frameworks achieve CI reliability.
 Without HAR - Tests fail if API is down, Slow — waits for real network, Flaky — API returns different data and Can't run offline in CI
 With HAR - Tests pass regardless of API state, Fast — instant response from file, Deterministic — same data every run and Runs fully offline in Docker/AKS
@@ -95,8 +102,9 @@ With HAR - Tests pass regardless of API state, Fast — instant response from fi
 Create scripts/record_har.py
 
 ## To capture the HAR file, execute the below command once 
+
 python scripts/record_har.py
 
-## This will open Chromium browser window, navigates to the demo app, adds two todo items, ticks one complete — then closes automatically. The HAR file is saved to har/todo_app.har.
+This will open Chromium browser window, navigates to the demo app, adds two todo items, ticks one complete — then closes automatically. The HAR file is saved to har/todo_app.har.
 ****************************************************************************
 
