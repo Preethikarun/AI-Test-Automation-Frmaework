@@ -1,3 +1,5 @@
+import json
+from datetime import datetime
 import pytest
 import re as _re
 from pathlib import Path
@@ -25,6 +27,49 @@ def page(browser):
     yield page
     context.close()
 
+def _log_failure(item, exc, broken_locator: str = None):
+    """Write structured failure data to reports/failures.json."""
+    log_path = Path("reports/failures.json")
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # load existing failures
+    failures = []
+    if log_path.exists():
+        try:
+            with open(log_path, "r") as f:
+                failures = json.load(f)
+        except json.JSONDecodeError:
+            failures = []
+
+    # classify failure type
+    error_type = type(exc).__name__
+    if "Timeout" in error_type:
+        category = "locator"
+    elif "AssertionError" in error_type:
+        category = "logic"
+    elif "Connection" in error_type:
+        category = "environment"
+    else:
+        category = "unknown"
+
+    # build failure record
+    record = {
+        "timestamp":      datetime.now().isoformat(),
+        "test":           item.nodeid,
+        "error_type":     error_type,
+        "error_message":  str(exc)[:500],
+        "category":       category,
+        "broken_locator": broken_locator,
+        "screenshot":     f"reports/screenshots/{item.name}.png",
+        "healed":         False
+    }
+    failures.append(record)
+
+    # save back
+    with open(log_path, "w") as f:
+        json.dump(failures, f, indent=2)
+    print(f"\nFailure logged → {log_path}")    
+
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_makereport(item, call):
@@ -45,6 +90,9 @@ def pytest_runtest_makereport(item, call):
                 print(f"\nScreenshot saved: {path}")
             except Exception:
                 pass
+
+            # log every failure to failures.json
+        _log_failure(item, exc, broken_locator=None)
 
         # self-heal on TimeoutError only
         error_msg = str(exc)
@@ -71,6 +119,7 @@ def pytest_runtest_makereport(item, call):
                 page_html=page_html,
                 locator_file="locators/todo_locators.py"
             )
+
 
 
 def _find_locator_key(broken_locator: str) -> str:
