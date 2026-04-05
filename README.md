@@ -1,4 +1,9 @@
 ai-test-framework/ 
+    ├── CLAUDE.md - Claude Code briefing 
+    ├── skills/ - reusable skill files 
+        ├── PAGE_OBJECT_SKILL.md - how to write POMs in this project
+        ├── TEST_CLASS_SKILL.md - how to write test classes
+        └── BDD_SKILL.md - how to write Gherkin features
     ├── agents/ # AI agents — Modes 1-5 + failure analysis 
     ├── locators/ # Mode 1 — all CSS selectors 
     ├── pages/ # Mode 2 — Page Object Model classes 

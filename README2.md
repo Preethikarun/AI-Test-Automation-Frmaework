@@ -68,3 +68,89 @@ End-to-end smoke test
 Every agent follows the same pattern. Input file → Claude prompt → output file → approval gate → git commit. 
 Mock mode means nothing blocks you. Every agent has a MOCK_MODE = True flag at the top. It returns realistic hardcoded output so the full workflow runs — approval gate, file writing, git commit — all of it works today regardless of API credits. 
 The approval gateway is the most important piece. It's what makes this framework safe and portfolio-worthy. Nothing touches your codebase without your explicit sign-off.
+
+*****************************************************************************
+# AI Test Automation Framework — Claude briefing
+
+## Project overview
+Python + Playwright AI test automation framework with
+self-healing locators, BDD generation, and continuous
+failure analysis. Built by a Test Automation Architect
+transitioning into AI PM.
+
+## Tech stack
+- Python 3.11 · pytest · Playwright · behave
+- Anthropic Claude SDK (primary) · Gemini (fallback)
+- Docker · GitHub Actions · Azure AKS
+- Allure reporting
+
+## Folder structure
+```
+agents/      # AI agents — base_agent + 4 specialist agents
+locators/    # CSS selectors — one file per page
+pages/       # Page Object Model classes — one class per page
+features/    # Gherkin .feature files (BDD)
+steps/       # Python behave step definitions
+tests/       # pytest test classes
+fixtures/    # test data + data factories
+har/         # HAR recordings for API mocking
+reports/     # Allure HTML + failures.json + screenshots
+skills/      # reusable skill instruction files
+docs/pm/     # PM artefacts — vision, decisions, metrics
+tools/       # migration tools — Postman, ReadyAPI importers
+```
+
+## Key conventions
+- All locators live in locators/ — never hardcode in pages
+- Page objects use locators via TODO_LOCATORS["key"] pattern
+- All agents inherit from agents/base_agent.py
+- MOCK_MODE = True in every agent — flip to False for live AI
+- Approval gate required for Modes 1, 2, 3 — not 4, 5
+- Every approved output gets a git commit with feat: or fix: prefix
+- Tests tagged with @pytest.mark.smoke or @pytest.mark.regression
+
+## Agent modes
+| Mode | Agent | Plan first? | Approval? |
+|------|-------|-------------|-----------|
+| 1 | test_reader_agent | yes | yes |
+| 2+3 | bdd_generator_agent | yes | yes |
+| 4 | direct test addition | no | yes |
+| 5 | self_heal_agent | no | yes |
+| 6 | failure_analysis_agent | no | no |
+
+## Running the framework
+```bash
+# activate venv first
+venv\Scripts\activate          # Windows
+source venv/bin/activate       # Mac/Linux
+
+# run all tests
+pytest tests/ -v
+
+# run smoke tests only
+pytest tests/ -v -m smoke
+
+# run a specific agent
+python -m agents.test_reader_agent
+
+# run full e2e loop
+python scripts/e2e_smoke_test.py
+
+# build and run in Docker
+docker build -t ai-test-framework .
+docker run ai-test-framework
+```
+
+## Skills location
+Before writing any POM, test class or BDD feature,
+read the relevant skill file in skills/:
+- POM → skills/PAGE_OBJECT_SKILL.md
+- Test class → skills/TEST_CLASS_SKILL.md
+- BDD → skills/BDD_SKILL.md
+
+## What NOT to do
+- Never hardcode selectors in page files
+- Never commit .env or API keys
+- Never skip the approval gate for Modes 1-3
+- Never use print() for errors — use proper assertions
+- Never create a Page Object without a matching locators file
