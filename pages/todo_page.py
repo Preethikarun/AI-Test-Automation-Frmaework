@@ -48,7 +48,7 @@ class TodoPage:
         return self.page.locator(
             TODO_LOCATORS["item_label"]
         ).all_text_contents()
-    
+
     def is_item_visible(self, text: str) -> bool:
         return self.page.locator(
             TODO_LOCATORS["todo_items"],

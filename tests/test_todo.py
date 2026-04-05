@@ -6,6 +6,7 @@ assert is how you check an expected result — if it's False, the test fails.
 from pages.todo_page import TodoPage
 # import pytest
 
+
 class TestTodoApp:
     """Test suite for the Playwright demo Todo app."""
 
