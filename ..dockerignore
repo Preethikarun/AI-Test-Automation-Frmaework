@@ -1,0 +1,37 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Environment and secrets — NEVER in Docker image
+.env
+.env.*
+
+# Reports — generated at runtime, not baked in
+reports/
+allure-results/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# HAR files — large, copy separately if needed
+# har/
+
+# Node (if any)
+node_modules/

@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ai-test-framework:latest
+    env_file:
+      - .env                      # loads GEMINI_API_KEY etc from .env
+    volumes:
+      - ./reports:/app/reports    # reports written to host machine
+      - ./har:/app/har            # HAR files available inside container
+    environment:
+      - PYTHONPATH=/app
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    command: pytest tests/ -v --tb=short
+
+  smoke:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ai-test-framework:latest
+    env_file:
+      - .env
+    volumes:
+      - ./reports:/app/reports
+      - ./har:/app/har
+    environment:
+      - PYTHONPATH=/app
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    command: pytest tests/ -v -m smoke --tb=short
