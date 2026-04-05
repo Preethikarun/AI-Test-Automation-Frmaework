@@ -1,6 +1,7 @@
 """
-This is a dict — key-value pairs in curly braces. 
-Page class uses these keys, never the raw selectors directly — so if a selector changes, you update it here once.
+This is a dict — key-value pairs in curly braces.
+Page class uses these keys, never raw selectors directly — so if
+a selector changes, you update it here once.
 """
 
 TODO_LOCATORS = {
@@ -13,5 +14,5 @@ TODO_LOCATORS = {
     "toggle_all": "label[for='toggle-all']",
     "filter_all": "a[href='#/']",
     "filter_active": "a[href='#/active']",
-    "filter_completed":"a[href='#/completed']",
+    "filter_completed": "a[href='#/completed']",
 }

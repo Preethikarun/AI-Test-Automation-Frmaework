@@ -11,7 +11,6 @@ from agents.base_agent import BaseAgent
 
 MOCK_MODE = True  # set False when API key is ready
 
-
 MOCK_OUTPUT = """TEST CASE: Add a single todo item
 GIVEN: The Todo app is open and the list is empty
 WHEN: User types "Build AI test framework" and presses Enter
@@ -36,6 +35,7 @@ WHEN: User hovers first item and clicks the destroy button
 THEN: First item is removed, second item remains visible
 TAGS: regression, ui"""
 
+
 class TestReaderAgent(BaseAgent):
 
     SYSTEM_PROMPT = """You are an expert test analyst.
@@ -50,7 +50,6 @@ Be precise, concise and consistent in your format."""
             raise FileNotFoundError(f"Test file not found: {filepath}")
         with open(path, "r", encoding="utf-8") as f:
             return f.read()
-        
 
     def extract_test_cases(self, test_code: str) -> str:
         """Send test code to AI and get structured test cases back."""
@@ -78,7 +77,7 @@ Test file:
     def show_preview(self, test_cases: str, source_file: str):
         """Print a formatted preview for the approval gate."""
         print("\n" + "="*60)
-        print(f"AGENT 1 — TEST READER OUTPUT")
+        print("AGENT 1 — TEST READER OUTPUT")
         print(f"Source: {source_file}")
         print("="*60)
         print(test_cases)
@@ -105,7 +104,6 @@ Test file:
         # Step 4: approval gate
         output = self._approval_gate(test_cases, test_file)
         return output
-    
 
     def _approval_gate(self, test_cases: str, source_file: str) -> str | None:
         """
@@ -124,8 +122,8 @@ Test file:
                 self.save_output(test_cases, output_path)
                 self._git_commit(
                     output_path,
-                    f"feat: Agent 1 — extracted test cases from "
-                    f"{source_file}"
+                    "feat: Agent 1 — extracted "
+                    f"test cases from {source_file}"
                 )
                 print("\nApproved and committed!")
                 return test_cases

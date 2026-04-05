@@ -1,11 +1,11 @@
-"""
-Agent 3 — Self-Healing Locator Repair (Mode 5)
+"""Agent 3 — Self-Healing Locator Repair (Mode 5)
 Triggered by TimeoutError during test runs.
 Receives broken locator + page HTML, suggests a fix,
 shows a diff, patches locator file on approval.
 
 No plan mode — this is a scoped surgical fix.
-Usage: called automatically from conftest.py or manually: python -m agents.self_heal_agent
+Usage: called automatically from conftest.py or manually:
+python -m agents.self_heal_agent
 """
 import re
 from pathlib import Path
@@ -35,10 +35,10 @@ Always prefer: data-testid > aria roles > CSS classes > XPath."""
         if MOCK_MODE:
             print("  [mock mode] suggesting locator fix")
             return {
-                "broken":     broken_locator,
-                "suggested":  broken_locator.replace("-BROKEN", ""),
-                "reason":     "Mock fix: removed -BROKEN suffix "
-                            "from selector",
+                "broken": broken_locator,
+                "suggested": broken_locator.replace("-BROKEN", ""),
+                "reason": "Mock fix: removed -BROKEN suffix from"
+                "selector",
                 "confidence": "high"
             }
 
@@ -52,15 +52,15 @@ Current page HTML (relevant section):
 {page_html[:3000]}
 
 Task:
-1. Find what element the broken locator was targeting
-2. Identify the best alternative selector in the current HTML
-3. Return your answer as JSON with these exact keys:
-   - broken: the original broken selector
-   - suggested: your recommended replacement selector
+1. Find what element broken locator was targeting
+2. Identify best alternative selector in current HTML
+3. Return answer as JSON with these exact keys:
+   - broken: original broken selector
+   - suggested: recommended replacement selector
    - reason: one sentence explaining why it broke
    - confidence: high / medium / low
 
-Return ONLY valid JSON. No explanation outside the JSON."""
+Return ONLY valid JSON. No explanation outside JSON."""
 
         response = self.call_claude(prompt, self.SYSTEM_PROMPT)
 
@@ -138,9 +138,9 @@ Return ONLY valid JSON. No explanation outside the JSON."""
     ):
         """
         Full self-heal run.
-        Plan: analyse → suggest → diff → approve → patch → commit
+        Plan: analyse -> suggest -> diff -> approve -> patch -> commit
         """
-        print(f"\nAgent 3 — self-heal triggered")
+        print("\nAgent 3 — self-heal triggered")
         print(f"  Broken locator: {locator_key} = '{broken_locator}'")
 
         # Step 1: get AI suggestion
@@ -208,6 +208,7 @@ Return ONLY valid JSON. No explanation outside the JSON."""
         except subprocess.CalledProcessError as e:
             print(f"  Git commit skipped: {e}")
 
+
 def main():
     """
     Manual test run — simulates a TimeoutError scenario.
@@ -219,9 +220,7 @@ def main():
     agent.run(
         broken_locator="input.new-todo-BROKEN",
         locator_key="new_input",
-        page_html=""
-                  "  "
-                  "",
+        page_html="<input class='new-todo'></input>",
         locator_file="locators/todo_locators.py"
     )
 

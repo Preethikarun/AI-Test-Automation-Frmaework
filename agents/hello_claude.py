@@ -1,8 +1,8 @@
-"""
-Hello Claude — Day 1 verification agent.
+"""Hello Claude — Day 1 verification agent.
 Reads test_todo.py and extracts plain-English test cases.
 Run: python agents/hello_claude.py
-Inherits everything from BaseAgent — including call_claude() and save_output(). 
+Inherits everything from BaseAgent — including call_claude()
+and save_output().
 """
 from agents.base_agent import BaseAgent
 
@@ -59,6 +59,6 @@ def main():
     )
     print("\nDay 1 complete — Claude AI is connected and working!")
 
-# Only runs when you execute the file directly.
+
 if __name__ == "__main__":
     main()

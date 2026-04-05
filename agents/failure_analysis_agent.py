@@ -16,6 +16,7 @@ from agents.base_agent import BaseAgent
 
 MOCK_MODE = True  # set False when API key is ready
 
+
 class FailureAnalysisAgent(BaseAgent):
 
     SYSTEM_PROMPT = """You are an expert test automation engineer
@@ -33,7 +34,7 @@ actionable fix plans that a junior engineer can follow."""
             print(f"  No failures log found at {filepath}")
             print("  Run your tests first to generate failures.")
             return []
-        
+
         with open(path, "r", encoding="utf-8") as f:
             failures = json.load(f)
 
@@ -69,7 +70,7 @@ End with a SUMMARY section covering:
 - Total failures by category
 - Most critical fix needed first
 - Any patterns suggesting systemic issues"""
-        
+
         return self.call_claude(prompt, self.SYSTEM_PROMPT)
 
     def _mock_analysis(self, failures: list) -> str:
@@ -82,8 +83,8 @@ End with a SUMMARY section covering:
 
         for i, f in enumerate(failures, 1):
             category = f.get("category", "unknown")
-            test     = f.get("test", "unknown test")
-            error    = f.get("error_message", "")[:100]
+            test = f.get("test", "unknown test")
+            error = f.get("error_message", "")[:100]
 
             lines.append(f"\nFAILURE {i}: {test}")
             lines.append(f"CATEGORY: {category}")
@@ -147,30 +148,27 @@ End with a SUMMARY section covering:
                       for f in failures]
         lines.append("\nSUMMARY")
         lines.append(
-            f"Locator failures:     "
-            f"{categories.count('locator')}"
+            f"Locator failures:     {categories.count('locator')}"
         )
         lines.append(
-            f"Logic failures:       "
-            f"{categories.count('logic')}"
+            f"Logic failures:       {categories.count('logic')}"
         )
         lines.append(
-            f"Flaky failures:       "
-            f"{categories.count('flaky')}"
+            f"Flaky failures:       {categories.count('flaky')}"
         )
         lines.append(
-            f"Environment failures: "
-            f"{categories.count('environment')}"
+            f"Environment failures: {categories.count('environment')}"
         )
 
         if categories.count("locator") > 0:
             lines.append(
                 "\nRECOMMENDATION: Run Agent 3 self-heal on "
-                "all locator failures first — these are fastest to fix."
+                "all locator failures first — "
+                "these are fastest to fix."
             )
 
         return "\n".join(lines)
-    
+
     def route_locator_failures(self, failures: list):
         """
         Route locator failures back to Agent 3.
@@ -186,7 +184,7 @@ End with a SUMMARY section covering:
             return
 
         print(f"\n  {len(locator_failures)} unhealed locator "
-            f"failure(s) — route to Agent 3?")
+              f"failure(s) — route to Agent 3?")
         decision = input("  Route to Agent 3? (Y/N) > ").upper()
 
         if decision == "Y":
@@ -246,4 +244,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    

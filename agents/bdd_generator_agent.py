@@ -100,6 +100,7 @@ def step_item_not_visible(context, text):
         f"Item \'{text}\' should not be visible"
     )'''
 
+
 class BDDGeneratorAgent(BaseAgent):
 
     SYSTEM_PROMPT = """You are an expert BDD test engineer.
@@ -132,17 +133,19 @@ reusable steps, proper Given/When/Then structure."""
         if MOCK_MODE:
             print("  [mock mode] generating feature file")
             return MOCK_FEATURE
-        
+
         skill = self.read_skill("BDD_SKILL.md")
-        prompt = f"""Convert these plain-English test cases into a professional Gherkin feature file.
-        
+        prompt = f"""Convert these plain-English test cases into a
+professional Gherkin feature file.
+
 Rules:
 - Use Feature, Background (if needed), Scenario
 - Tag each scenario with @smoke or @regression and @ui
 - Use concrete examples in scenario names
 - Keep steps reusable across scenarios
 - Use parameters in quotes for dynamic values
-- Follow this BDD skill guide:\n{skill}\n\n
+- Follow this BDD skill guide:
+{skill}
 
 Test cases:
 {test_cases}
@@ -158,15 +161,16 @@ No explanation, no markdown code blocks."""
             print("  [mock mode] generating step definitions")
             return MOCK_STEPS
 
-        prompt = f"""Write Python behave step definitions for this Gherkin feature file.
+        prompt = f"""Write Python behave step definitions for this
+Gherkin feature file.
 
 Rules:
 - Import from behave: given, when, then
 - Import TodoPage from pages.todo_page
 - Use context.todo to hold the page object
 - Add a get_todo(context) helper function
-- Handle integer parameters with {{name:d}}
-- Handle string parameters with "{{text}}"
+- Handle integer with parameter indices like 1, 2
+- Handle string with parameter values like \"todo text\"
 - Add clear assertion messages on failure
 
 Feature file:
@@ -206,7 +210,7 @@ Return ONLY the Python code. No explanation."""
         # Step 3: generate step definitions
         print("  Generating step definitions...")
         steps = self.generate_steps(feature)
-        
+
         # Step 4: preview both files
         self.show_preview(feature, steps)
 
@@ -238,7 +242,7 @@ Return ONLY the Python code. No explanation."""
                 )
                 print("\nApproved! Both files saved and committed.")
                 return
-            
+
             elif decision == "REJECT":
                 print("Rejected — both files discarded.")
                 return
@@ -248,7 +252,11 @@ Return ONLY the Python code. No explanation."""
                     "What should be improved? > "
                 ).strip()
                 if MOCK_MODE:
-                    print("  [mock mode] IMPROVE is a no-op — disable MOCK_MODE to use real feedback")
+                    msg = (
+                        "[mock mode] IMPROVE is a no-op — "
+                        "disable MOCK_MODE to use real feedback"
+                    )
+                    print(f"  {msg}")
                 print(f"  Regenerating with: {feedback}")
                 feature = self.generate_feature(
                     f"Feedback: {feedback}\n"
@@ -277,6 +285,7 @@ Return ONLY the Python code. No explanation."""
         except subprocess.CalledProcessError as e:
             print(f"  Git commit skipped: {e}")
 
+
 def main():
     agent = BDDGeneratorAgent()
     agent.run("reports/test_cases.txt")
@@ -284,4 +293,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-        
