@@ -12,38 +12,38 @@ from agents.base_agent import BaseAgent
 MOCK_MODE = True  # set False when API key is ready
 
 MOCK_FEATURE = """Feature: Todo application
-  As a user
-  I want to manage my daily tasks
-  So that I can stay organised
+As a user
+I want to manage my daily tasks
+So that I can stay organised
 
-  @smoke @ui
-  Scenario: Add a single todo item
+@smoke @ui
+Scenario: Add a single todo item
     Given the todo app is open
     When I add a todo item "Build AI test framework"
     Then the todo count shows 1
     And the item "Build AI test framework" is visible
 
-  @regression @ui
-  Scenario: Add multiple todo items
+@regression @ui
+Scenario: Add multiple todo items
     Given the todo app is open
     When I add a todo item "Day 1 foundation"
-        And I add a todo item "Day 2 AI agents"
+    And I add a todo item "Day 2 AI agents"
     And I add a todo item "Day 3 CI/CD"
     Then the todo count shows 3
 
-  @regression @ui
-  Scenario: Complete a todo item
+@regression @ui
+Scenario: Complete a todo item
     Given the todo app is open
     And I add a todo item "Complete me"
     When I complete todo item 1
     Then the todo count shows 0
 
-  @regression @ui
-  Scenario: Delete a todo item
+@regression @ui
+Scenario: Delete a todo item
     Given the todo app is open
     And I add a todo item "Delete me"
     And I add a todo item "Keep me"
-        When I delete todo item 1
+    When I delete todo item 1
     Then the item "Delete me" is not visible
     And the item "Keep me" is visible"""
 
@@ -108,6 +108,13 @@ Gherkin feature files and Python behave step definitions.
 Follow BDD best practices — business-readable scenarios,
 reusable steps, proper Given/When/Then structure."""
 
+    def read_skill(self, skill_file: str) -> str:
+        """Read a skill file to guide code generation."""
+        path = Path(f"skills/{skill_file}")
+        if path.exists():
+            return path.read_text(encoding="utf-8")
+        return ""  # skill optional — agent continues without it
+
     def read_test_cases(self,
                         filepath: str = "reports/test_cases.txt"
                         ) -> str:
@@ -118,23 +125,24 @@ reusable steps, proper Given/When/Then structure."""
                 f"Test cases not found: {filepath}\n"
                 "Run Agent 1 first: python -m agents.test_reader_agent"
             )
-        with open(path, "r", encoding="utf-8") as f:
-            return f.read()
+        return path.read_text(encoding="utf-8")
 
     def generate_feature(self, test_cases: str) -> str:
         """Generate Gherkin .feature file from test cases."""
         if MOCK_MODE:
             print("  [mock mode] generating feature file")
             return MOCK_FEATURE
-
+        
+        skill = self.read_skill("BDD_SKILL.md")
         prompt = f"""Convert these plain-English test cases into a professional Gherkin feature file.
-
+        
 Rules:
 - Use Feature, Background (if needed), Scenario
 - Tag each scenario with @smoke or @regression and @ui
 - Use concrete examples in scenario names
 - Keep steps reusable across scenarios
 - Use parameters in quotes for dynamic values
+- Follow this BDD skill guide:\n{skill}\n\n
 
 Test cases:
 {test_cases}
@@ -183,7 +191,7 @@ Return ONLY the Python code. No explanation."""
         """
         Full agent run with approval gate.
         Plan: read → generate feature → generate steps
-              → preview both → approve → save both → commit
+            → preview both → approve → save both → commit
         """
         print("\nAgent 2 starting — reading test cases...")
 
@@ -239,6 +247,8 @@ Return ONLY the Python code. No explanation."""
                 feedback = input(
                     "What should be improved? > "
                 ).strip()
+                if MOCK_MODE:
+                    print("  [mock mode] IMPROVE is a no-op — disable MOCK_MODE to use real feedback")
                 print(f"  Regenerating with: {feedback}")
                 feature = self.generate_feature(
                     f"Feedback: {feedback}\n"
