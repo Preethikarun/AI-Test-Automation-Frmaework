@@ -145,7 +145,7 @@ End with a SUMMARY section covering:
 
         # summary
         categories = [f.get("category", "unknown")
-                    for f in failures]
+                      for f in failures]
         lines.append("\nSUMMARY")
         lines.append(
             f"Locator failures:     {categories.count('locator')}"
@@ -184,7 +184,7 @@ End with a SUMMARY section covering:
             return
 
         print(f"\n  {len(locator_failures)} unhealed locator "
-            f"failure(s) — route to Agent 3?")
+              f"failure(s) — route to Agent 3?")
         decision = input("  Route to Agent 3? (Y/N) > ").upper()
 
         if decision == "Y":
