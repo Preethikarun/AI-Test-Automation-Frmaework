@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 from agents.base_agent import BaseAgent
 
-MOCK_MODE = True  # set False when API key is ready
+MOCK_MODE = False  # set False when API key is ready
 
 
 class SelfHealAgent(BaseAgent):

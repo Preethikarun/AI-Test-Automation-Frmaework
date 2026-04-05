@@ -14,7 +14,7 @@ from pathlib import Path
 from datetime import datetime
 from agents.base_agent import BaseAgent
 
-MOCK_MODE = True  # set False when API key is ready
+MOCK_MODE = False  # set False when API key is ready
 
 
 class FailureAnalysisAgent(BaseAgent):

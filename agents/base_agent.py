@@ -3,6 +3,7 @@ Base agent — auto-selects Anthropic or Gemini
 based on which API key is available in .env
 """
 import os
+from urllib import response
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -38,14 +39,11 @@ class BaseAgent:
             self.model = "claude-sonnet-4-6"
 
         elif self.provider == "gemini":
-            import google.generativeai as genai
-            genai.configure(
+            from google import genai
+            self.client = genai.Client(
                 api_key=os.getenv("GEMINI_API_KEY")
             )
-            self.client = genai.GenerativeModel(
-                "gemini-1.5-flash"
-            )
-            self.model = "gemini-1.5-flash-latest"
+            self.model = "gemini-2.0-flash"
 
     def call_claude(self, prompt: str, system: str = None) -> str:
         if self.provider == "anthropic":
@@ -68,7 +66,10 @@ class BaseAgent:
         full_prompt = prompt
         if system:
             full_prompt = f"{system}\n\n{prompt}"
-        response = self.client.generate_content(full_prompt)
+        response = self.client.models.generate_content(
+            model=self.model,
+            contents=full_prompt
+        )
         return response.text
 
     def save_output(self, content: str, filepath: str):

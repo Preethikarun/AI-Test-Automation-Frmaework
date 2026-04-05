@@ -9,7 +9,7 @@ Usage: python -m agents.bdd_generator_agent
 from pathlib import Path
 from agents.base_agent import BaseAgent
 
-MOCK_MODE = True  # set False when API key is ready
+MOCK_MODE = False  # set False when API key is ready and True when its not Ready
 
 MOCK_FEATURE = """Feature: Todo application
 As a user

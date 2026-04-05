@@ -9,7 +9,7 @@ Usage: python -m agents.test_reader_agent
 from pathlib import Path
 from agents.base_agent import BaseAgent
 
-MOCK_MODE = True  # set False when API key is ready
+MOCK_MODE = False  # set False when API key is ready
 
 MOCK_OUTPUT = """TEST CASE: Add a single todo item
 GIVEN: The Todo app is open and the list is empty
@@ -54,22 +54,36 @@ Be precise, concise and consistent in your format."""
     def extract_test_cases(self, test_code: str) -> str:
         """Send test code to AI and get structured test cases back."""
         if MOCK_MODE:
-            print("  [mock mode] returning sample test cases")
-            return MOCK_OUTPUT
+            print("  [mock mode] generating test cases from file content")
+            # In mock mode — generate basic structure from
+            # the actual file content so output matches the source
+            lines = [l.strip() for l in test_code.splitlines()
+                    if l.strip() and not l.strip().startswith("#")]
+            mock_cases = []
+            for i, line in enumerate(lines[:4], 1):
+                mock_cases.append(
+                    f"TEST CASE: {line[:60]}\n"
+                    f"GIVEN: The application is in the correct state\n"
+                    f"WHEN: {line[:80]}\n"
+                    f"THEN: The expected result is achieved\n"
+                    f"TAGS: regression, ui\n"
+                    f"SOURCE: {self._current_source}\n"
+                    f"---"
+                )
+            return "\n".join(mock_cases) if mock_cases else MOCK_OUTPUT
 
-        prompt = f"""Read this Playwright test file and extract
-each test as a plain-English test case.
-
-Use EXACTLY this format for each test:
+        prompt = f"""Read this file and extract each test case
+in this exact format:
 
 TEST CASE: [descriptive name]
 GIVEN: [starting state / precondition]
-WHEN: [user action performed]
+WHEN: [action performed]
 THEN: [expected result]
 TAGS: [smoke | regression | ui | api]
+SOURCE: [the filename]
 ---
 
-Test file:
+File contents:
 {test_code}"""
 
         return self.call_claude(prompt, self.SYSTEM_PROMPT)
@@ -88,6 +102,7 @@ Test file:
         Full agent run with approval gate.
         Plan: read → extract → preview → approve → save → commit
         """
+        self._current_source = test_file
         print(f"\nAgent 1 starting — reading {test_file}")
 
         # Step 1: read the test file
@@ -165,8 +180,21 @@ Test file:
 
 
 def main():
+    import argparse
+
+    # parse --source argument
+    parser = argparse.ArgumentParser(
+        description="Agent 1 — reads any test source file"
+    )
+    parser.add_argument(
+        "--source",
+        default="tests/test_todo.py",
+        help="Path to the file to read (py, txt, xlsx, docx)"
+    )
+    args = parser.parse_args()
+
     agent = TestReaderAgent()
-    agent.run("tests/test_todo.py")
+    agent.run(args.source)
 
 
 if __name__ == "__main__":
