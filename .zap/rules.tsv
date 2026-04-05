@@ -1,0 +1,5 @@
+10015	IGNORE	(Incomplete or No Cache-control Header Set)
+10016	IGNORE	(Web Browser XSS Protection Not Enabled)
+10020	IGNORE	(X-Frame-Options Header)
+10021	IGNORE	(X-Content-Type-Options Header Missing)
+10035	IGNORE	(Strict-Transport-Security Header)
