@@ -1,3 +1,4 @@
+import allure
 import json
 from datetime import datetime
 import pytest
@@ -88,6 +89,13 @@ def pytest_runtest_makereport(item, call):
             try:
                 page.screenshot(path=str(path))
                 print(f"\nScreenshot saved: {path}")
+
+                # attach screenshot to Allure report
+                allure.attach.file(
+                    str(path),
+                    name=f"failure-{item.name}",
+                    attachment_type=allure.attachment_type.PNG
+                )
             except Exception:
                 pass
 

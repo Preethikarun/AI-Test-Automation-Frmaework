@@ -16,6 +16,7 @@ build/
 # Reports — generated at runtime, not baked in
 reports/
 allure-results/
+allure-html/
 
 # Git
 .git/
