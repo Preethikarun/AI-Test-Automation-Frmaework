@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ai-smoke-run
+  namespace: ai-test-framework
+  labels:
+    app: ai-test-framework
+    test-suite: smoke
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 1800
+  template:
+    metadata:
+      labels:
+        app: ai-test-framework
+        job-type: smoke-tests
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: smoke-runner
+          image: YOURACRNAME.azurecr.io/ai-test-framework:latest
+          # Run smoke tests only — faster CI feedback
+          command: ["pytest", "tests/", "-v", "-m", "smoke",
+                    "--tb=short", "--alluredir=reports/allure-results"]
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          env:
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-test-secrets
+                  key: GEMINI_API_KEY
+            - name: PYTHONPATH
+              value: "/app"
+            - name: PLAYWRIGHT_BROWSERS_PATH
+              value: "/ms-playwright"
+          volumeMounts:
+            - name: reports-output
+              mountPath: /app/reports
+      volumes:
+        - name: reports-output
+          emptyDir: {}
+      imagePullSecrets:
+        - name: acr-credentials

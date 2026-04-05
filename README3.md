@@ -5,7 +5,7 @@
 > Playwright BDD, self-healing locators, and a human-in-the-loop approval workflow.
 > Deployed on Azure AKS via GitHub Actions CI/CD.
 
-![CI](https://github.com/YOUR_USERNAME/ai-test-automation-framework/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/Preethikarun/AI-Test-Automation-Frmaework/actions/workflows/ci.yml/badge.svg)
 ![Python](https://img.shields.io/badge/python-3.11-blue)
 ![Playwright](https://img.shields.io/badge/playwright-1.58.0-green)
 ![Docker](https://img.shields.io/badge/docker-ready-blue)

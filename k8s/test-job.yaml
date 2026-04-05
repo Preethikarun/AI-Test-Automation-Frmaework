@@ -1,0 +1,80 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ai-test-run
+  namespace: ai-test-framework
+  labels:
+    app: ai-test-framework
+    triggered-by: github-actions
+spec:
+  # Retry up to 2 times on failure before marking job failed
+  backoffLimit: 2
+
+  # Clean up completed/failed pods after 1 hour
+  ttlSecondsAfterFinished: 3600
+
+  template:
+    metadata:
+      labels:
+        app: ai-test-framework
+        job-type: playwright-tests
+    spec:
+      # Never restart — a Job should run once and complete
+      restartPolicy: Never
+
+      containers:
+        - name: test-runner
+          # Image pulled from Azure Container Registry
+          # Tag is injected by CI pipeline on each run
+          image: YOURACRNAME.azurecr.io/ai-test-framework:latest
+
+          # Default command from Dockerfile — run all tests
+          # Override per-run: args: ["pytest", "tests/", "-m", "smoke"]
+          command: ["pytest", "tests/", "-v", "--tb=short",
+                    "--alluredir=reports/allure-results"]
+
+          # Resource limits — prevent runaway test processes
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"
+
+          # Environment variables from Kubernetes Secret
+          env:
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-test-secrets
+                  key: GEMINI_API_KEY
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-test-secrets
+                  key: ANTHROPIC_API_KEY
+                  optional: true   # optional — only needed for live mode
+            - name: PYTHONPATH
+              value: "/app"
+            - name: PLAYWRIGHT_BROWSERS_PATH
+              value: "/ms-playwright"
+
+          # Mount HAR files for API mocking
+          volumeMounts:
+            - name: har-files
+              mountPath: /app/har
+            - name: reports-output
+              mountPath: /app/reports
+
+      volumes:
+        # HAR files from a ConfigMap or mounted storage
+        # In production: use Azure File Share for persistent storage
+        - name: har-files
+          emptyDir: {}
+        - name: reports-output
+          emptyDir: {}
+
+      # Pull from private ACR — credentials in imagePullSecrets
+      imagePullSecrets:
+        - name: acr-credentials
