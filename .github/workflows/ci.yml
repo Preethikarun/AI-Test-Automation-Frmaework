@@ -60,7 +60,7 @@ jobs:
             pytest tests/ -v \
               --alluredir=reports/allure-results \
               --tb=short
-        continue-on-error: true   # upload results even if tests fail
+        continue-on-error: true    
 
       - name: Upload Allure results
         uses: actions/upload-artifact@v4
@@ -94,6 +94,10 @@ jobs:
         with:
           name: allure-results
           path: reports/allure-results/
+        continue-on-error: true
+
+      - name: Ensure allure-results folder exists
+        run: mkdir -p reports/allure-results
 
       - name: Set up Java (Allure needs it)
         uses: actions/setup-java@v4
