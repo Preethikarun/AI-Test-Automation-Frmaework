@@ -1,549 +1,801 @@
 # CLAUDE.md — AI Test Automation Framework
 
-> Read this file completely before writing any code, generating any
-> file, or making any suggestion. This is the single source of truth
-> for how Claude should behave in this project.
+> Cursor reads this file at the start of every session.
+> Read it fully before writing a single line of code.
 
 ---
 
-## 1. Who I am and what I am building
+## Who I am
 
-I am Preethi Rajendarn, a **Test Automation
-Manager** transitioning into an **AI Test Automation Architect** and
-**AI Product Manager (AI PM)**. I have strong test automation
-experience and have experience in **Python** — I understand concepts but
-I need code explained clearly and simply.
-
-I am building an **AI-powered test automation framework** from scratch
-over 4 days as a portfolio project. The framework targets hiring
-managers who are looking for someone with both technical depth and
-product thinking.
-
-**My dual identity in this project:**
-- As a **Test Automation Architect** — I design the agent system,
-  POM structure, CI/CD pipeline, and cloud deployment
-- As an **AI PM** — I write the product vision, decision log,
-  user stories, roadmap, and metrics that show I think in outcomes,
-  not just code
-
-**My primary audience:** Hiring managers at companies building
-internal AI tooling, platform engineering teams, and QA automation
-products.
+I am an AI Test Automation Architect building a production-grade Python Playwright BDD framework.
+This framework sits on top of `automation-pylib` (a shared internal library) and adds AI agents,
+context-driven API testing, self-healing locators, multi-browser support, behaviour capture,
+and a continuous improvement feedback loop.
 
 ---
 
-## 2. Project overview
+## Python-Pytest terminology (use these — not Cucumber/Ruby terms)
 
-**Name:** AI Test Automation Framework
-**Repo:** ai-test-automation-framework (public GitHub)
-**Language:** Python 3.13.12
-**Target app:** Playwright Demo TodoMVC + ReqRes.in REST API
-
-### What this framework does
-1. Reads requirements or manual test cases from multiple sources
-   and converts them to structured plain-English test cases
-   (Agent 1 — Mode 1 — Intake layer)
-2. Generates BDD Gherkin feature files and step definitions
-   (Agent 2 — Modes 2+3)
-3. Adds new test cases to existing classes (Mode 4)
-4. Self-heals broken locators automatically (Agent 3 — Mode 5)
-5. Analyses failures and produces fix plans (Agent 4 — Mode 6)
-6. Runs in Docker, deployed via GitHub Actions to Azure AKS
-7. Nothing commits to Git without explicit human approval
-
-### E2E flow
-```
-Requirement / Manual test case / Existing script
-       ↓
-   Intake layer — Agent 1 reads any source format
-       ↓
-   Plain-English structured test cases
-       ↓
-   Agent 2 generates BDD Gherkin + step definitions
-       ↓
-   Playwright runs automation
-       ↓
-   CI pipeline executes
-       ↓
-   Claude analyses failures
-       ↓
-   Framework improves continuously
-```
+| Concept | Python-Pytest name | Do NOT use |
+|---------|-------------------|------------|
+| Shared test state | `TestContext` | World, Context |
+| Test state folder | `context/` | world/ |
+| State class | `TestContext` | World |
+| Test state file | `test_context.py` | context.py |
+| Service abstraction | `ServiceLayer` | Domain |
+| HTTP client wrapper | `APIClient` | RestClient, GatewayAPI |
+| HTTP response object | `APIResponse` | RestClient Result |
+| Fixture scope | `conftest.py` fixtures | "mixin all services" |
+| Setup per test | `@pytest.fixture` | before_scenario |
+| Step implementation | `step definitions` | step defs |
+| Test data generation | `DataFactory` | DataStore |
+| Shared utilities | `utils/` | helpers/ |
+| Test runner config | `pytest.ini` / `conftest.py` | behave.ini only |
 
 ---
 
-## 3. Requirements and manual test case intake — where inputs come from
+## Project overview
 
-This is the intake layer. Agent 1 (test reader) accepts inputs from
-MULTIPLE sources — not just existing Python scripts. All intake files
-are stored in `intake/` before processing.
+**Framework name:** `ai-test-framework`
+**Language:** Python 3.11+
+**Test runner:** pytest + behave (BDD)
+**Browser automation:** Playwright
+**AI:** Anthropic Claude API (`claude-sonnet-4-6`)
+**Behaviour capture:** Playwright Trace + MCP + Windsurf
+**Reporting:** Allure (combined UI + API + E2E suites)
+**CI/CD:** GitHub Actions → Docker → Azure AKS
+**Shared library:** `automation-pylib` (imported, never modified)
 
-### Supported input sources
-
-| Source | File location | Format | Agent reads it via |
-|--------|--------------|--------|-------------------|
-| Existing Playwright scripts | `intake/scripts/` | `.py` | read_test_file() |
-| Manual test cases (Excel) | `intake/manual/` | `.xlsx` | read_excel() |
-| Manual test cases (Word) | `intake/manual/` | `.docx` | read_word() |
-| Manual test cases (plain text) | `intake/manual/` | `.txt` | read_text() |
-| Requirements (plain text) | `intake/requirements/` | `.txt` | read_requirements() |
-| Requirements (Word doc) | `intake/requirements/` | `.docx` | read_word() |
-| Postman collections (v2) | `intake/postman/` | `.json` | read_postman() |
-| ReadyAPI projects | `intake/readyapi/` | `.xml` | read_readyapi() |
-| User stories (plain text) | `intake/stories/` | `.txt` | read_requirements() |
-
-### Intake folder structure
-```
-intake/
-├── scripts/          ← existing Playwright .py test files
-├── manual/           ← Excel/Word/text manual test cases
-├── requirements/     ← requirement docs, user stories
-├── postman/          ← Postman collection JSON exports
-└── readyapi/         ← ReadyAPI project XML exports
-```
-
-### How Agent 1 handles different formats
-
-**From existing scripts (.py):**
-Agent reads Python code and extracts what each test does.
-
-**From manual test cases (.xlsx or .docx):**
-Agent reads the file, finds columns/sections labelled
-Test Case, Steps, Expected Result and converts each row
-to a structured test case.
-
-**From requirements (.txt or .docx):**
-Agent reads the requirements and INFERS what test cases
-should exist to cover them — it generates test cases from
-requirements, not just reads them.
-
-**Expected column names in Excel manual test cases:**
-- Test Case ID, Test Case Name, Precondition,
-  Steps, Expected Result, Priority, Tags
-- Agent is tolerant of variations — it uses AI to map
-  whatever columns exist to the standard format
-
-### Output — always the same regardless of input source
-No matter what Agent 1 reads, it always produces the same
-structured output saved to `reports/test_cases.txt`:
-
-```
-TEST CASE: [name]
-GIVEN: [precondition]
-WHEN: [action]
-THEN: [expected result]
-TAGS: [smoke | regression | ui | api]
-PRIORITY: [high | medium | low]
-SOURCE: [filename it came from]
 ---
+
+## The two-layer architecture
+
+```
+automation-pylib  (shared library — pip install or git submodule)
+    └── utils/common/        helper functions, config, dates, strings
+    └── utils/db/            MySQL, Oracle, SQLite connectors
+    └── utils/api/           api_context, json_parser, xml_parser
+    └── utils/tools/         bdd_common_data, bdd_steps_functions
+
+ai-test-framework  (this project — layer ON TOP of automation-pylib)
+    └── locators/            selector dicts — tester fills values
+    └── pages/               PageObjects — one class per screen
+    └── facade/              multi-screen + multi-API flows
+    └── api/                 REST/SOAP/mock clients + auth + validator
+    └── context/             TestContext, RetryManager, Logger
+    └── utils/               actions.py, functions.py, agents/
+    └── capture/             behaviour capture: trace → MCP → Windsurf
+    └── tests/               api/ and e2e/ Spec tests
+    └── testCases/           features/, steps/, api/rest/, api/soap/
+    └── data/                JSON/CSV test data + DataFactory
+    └── fixtures/            conftest.py, setup, teardown
+    └── config/              browsers.py, environments.py
+    └── reports/             Allure, screenshots, failures.json, traces
+    └── k8s/                 Azure AKS manifests
+    └── .github/workflows/   CI/CD pipeline
 ```
 
 ---
 
-## 4. Tech stack
-
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| Language | Python 3.11 | Core language |
-| UI testing | Playwright + pytest | Browser automation |
-| BDD | behave | Gherkin test execution |
-| AI primary | Anthropic claude-sonnet-4-6 | Agent intelligence |
-| AI fallback | Google Gemini 2.0 Flash | Free tier backup |
-| API mocking | HAR replay | Network independence |
-| Reporting | Allure | HTML reports + trends |
-| Container | Docker | Consistent test runs |
-| CI/CD | GitHub Actions | Automated pipeline |
-| Cloud | Azure AKS | Kubernetes deployment |
-| Security | OWASP ZAP | DAST in pipeline |
-| Excel reading | openpyxl | Read .xlsx manual test cases |
-| Word reading | python-docx | Read .docx requirements |
-
----
-
-## 5. Folder structure
+## Complete folder structure
 
 ```
 ai-test-framework/
-├── CLAUDE.md                  ← you are here
-├── README.md                  ← hiring manager first impression
-├── pytest.ini                 ← markers: smoke regression flaky ui api
-├── conftest.py                ← HAR replay + screenshot + self-heal trigger
-├── requirements.txt
-├── .env                       ← API keys — never commit
-├── .gitignore
-├── Dockerfile
-├── .github/
-│   └── workflows/
-│       └── ci.yml             ← GitHub Actions pipeline
-├── agents/                    ← all AI agents
-│   ├── base_agent.py          ← parent class, provider switching
-│   ├── test_reader_agent.py   ← Mode 1 — reads ANY intake source
-│   ├── bdd_generator_agent.py ← Modes 2+3
-│   ├── self_heal_agent.py     ← Mode 5
-│   ├── failure_analysis_agent.py ← Mode 6
-│   └── hello_claude.py        ← Day 1 verification
-├── intake/                    ← ALL input sources land here first
-│   ├── scripts/               ← existing .py Playwright tests
-│   ├── manual/                ← Excel/Word manual test cases
-│   ├── requirements/          ← requirement docs + user stories
-│   ├── postman/               ← Postman JSON exports
-│   └── readyapi/              ← ReadyAPI XML exports
-├── locators/                  ← CSS selectors — one file per page
-│   └── todo_locators.py
-├── pages/                     ← Page Object Model classes
-│   └── todo_page.py
-├── features/                  ← Gherkin .feature files
-│   └── todo.feature
-├── steps/                     ← behave step definitions
-│   └── todo_steps.py
-├── tests/                     ← pytest test classes
-│   └── test_todo.py
-├── fixtures/                  ← test data + data factories
-├── har/                       ← HAR recordings for API mocking
-│   └── todo_app.har
-├── reports/                   ← all output
-│   ├── test_cases.txt         ← Agent 1 structured output
-│   ├── failures.json          ← structured failure log
-│   ├── failure_report.txt     ← Agent 4 analysis output
-│   ├── allure-results/        ← Allure raw data
-│   └── screenshots/           ← on-failure screenshots
-├── scripts/                   ← utility + demo scripts
-│   ├── record_har.py          ← HAR recorder (run once)
-│   └── e2e_smoke_test.py      ← full loop verification
-├── skills/                    ← instruction files for agents
-│   ├── PAGE_OBJECT_SKILL.md
-│   ├── TEST_CLASS_SKILL.md
-│   └── BDD_SKILL.md
-├── tools/                     ← migration tools
-│   ├── postman_importer.py    ← imports Postman collections
-│   └── readyapi_importer.py   ← imports ReadyAPI projects
-└── docs/
-    ├── pm/
-    │   ├── PRODUCT_VISION.md
-    │   ├── DECISION_LOG.md
-    │   ├── METRICS.md
-    │   ├── USER_STORIES.md
-    │   ├── ROADMAP.md
-    │   └── RELEASE_NOTES_v1.md
-    └── architecture/
-        └── AGENT_ORCHESTRATION.md
+│
+├── locators/                     ← selector dicts, tester fills ""
+├── pages/                        ← PageObjects, one per screen
+├── facade/                       ← multi-screen + multi-API flows
+│
+├── api/
+│   ├── rest_client.py            ← REST via httpx
+│   ├── soap_client.py            ← SOAP via zeep
+│   ├── mock_client.py            ← returns mock from file
+│   ├── auth_handler.py           ← none/apikey/bearer/basic/oauth2/cert
+│   ├── validator.py              ← status/time/fields/values/text
+│   └── runner.py                 ← reads definition → routes → validates
+│
+├── context/
+│   ├── test_context.py           ← TestContext: shared state per test
+│   ├── retry_manager.py          ← tracks retry counts per test
+│   └── logger.py                 ← structured JSON failure logger
+│
+├── capture/                      ← behaviour capture pipeline
+│   ├── trace_recorder.py         ← Playwright Trace config + recording
+│   ├── mcp_analyser.py           ← MCP: intent + causality + semantics
+│   ├── windsurf_exporter.py      ← formats trace output for Windsurf
+│   └── ci_failure_capture.py     ← CI trace artifacts + failures.json
+│
+├── utils/
+│   ├── actions.py                ← UI helpers + data readers
+│   ├── functions.py              ← assertions + common app flows
+│   ├── data_factory.py           ← DataFactory: generates test data
+│   └── agents/
+│       ├── base_agent.py         ← BaseAgent (Anthropic + Gemini fallback)
+│       ├── test_reader_agent.py  ← Agent 1: reads scripts → test cases
+│       ├── bdd_generator_agent.py ← Agent 2: test cases → Gherkin
+│       ├── self_heal_agent.py    ← Agent 3: MCP self-healing
+│       ├── failure_analysis_agent.py ← Agent 4: classifies failures
+│       └── approval_gateway.py  ← orchestrates all agents
+│
+├── tests/
+│   ├── api/
+│   │   └── test_api_runner.py    ← Spec: REST + SOAP definitions
+│   └── e2e/
+│       └── test_e2e_*.py         ← Spec: API + UI combined
+│
+├── testCases/
+│   ├── features/                 ← BDD Gherkin scenarios
+│   ├── steps/                    ← step definitions → Facade
+│   └── api/
+│       ├── rest/                 ← REST definitions + mocks (JSON)
+│       └── soap/                 ← SOAP definitions + mocks (XML)
+│
+├── data/                         ← test data JSON/CSV
+├── fixtures/                     ← conftest.py
+├── config/
+│   ├── browsers.py               ← Chromium/Firefox/WebKit config
+│   └── environments.py           ← env URLs, credentials lookup
+│
+├── reports/
+│   ├── allure-results/           ← Allure report output
+│   ├── screenshots/              ← on-failure screenshots
+│   ├── traces/                   ← Playwright .zip trace files
+│   └── failures.json             ← structured failure log
+│
+├── k8s/                          ← AKS manifests
+├── scripts/                      ← record_har.py, utilities
+├── har/                          ← recorded HAR files
+├── skills/                       ← PAGE_OBJECT_SKILL.md etc.
+│
+├── .env                          ← API keys — never commit
+├── conftest.py                   ← root conftest + trace hooks
+├── pytest.ini                    ← markers: smoke/regression/flaky/api/ui/e2e
+├── CLAUDE.md                     ← this file
+└── README.md
 ```
 
 ---
 
-## 6. Agent modes — how they work
+## Naming conventions — use these exactly
 
-| Mode | Agent file | Plan first? | Approval gate? | Auto-commit? |
-|------|-----------|-------------|----------------|-------------|
-| 1 | test_reader_agent.py | Yes | Yes — APPROVE/REJECT/IMPROVE | On APPROVE |
-| 2+3 | bdd_generator_agent.py | Yes | Yes — both files together | On APPROVE |
-| 4 | direct addition | No | Yes | On APPROVE |
-| 5 | self_heal_agent.py | No | Yes — diff shown | On APPROVE |
-| 6 | failure_analysis_agent.py | No | No — read only | Never |
-
-**The approval gate rule:** Nothing touches the codebase without
-explicit human approval. The agent generates → human reviews the diff
-→ human types APPROVE → git commits. REJECT discards. IMPROVE
-regenerates with feedback.
-
-**MOCK_MODE:** Every agent has `MOCK_MODE = True` at the top.
-When True it returns realistic hardcoded output so the full workflow
-can be built and tested without API credits. Flip to False when
-the API key has credits.
+| Layer | File pattern | Example |
+|-------|-------------|---------|
+| Locators | `{app}_{screen}_locators.py` | `trademe_search_locators.py` |
+| Pages | `{app}_{screen}_page.py` | `trademe_search_page.py` |
+| Facade | `{app}_facade.py` | `trademe_facade.py` |
+| REST definition | `{feature}.json` | `property_search.json` |
+| REST mock | `{feature}_mock.json` | `property_search_mock.json` |
+| SOAP definition | `{feature}.xml` | `property_search.xml` |
+| SOAP mock | `{feature}_mock.xml` | `property_search_mock.xml` |
+| BDD feature | `{app}_{domain}.feature` | `trademe_property.feature` |
+| BDD steps | `{app}_steps.py` | `trademe_steps.py` |
+| API Spec | `test_api_runner.py` | fixed name |
+| E2E Spec | `test_e2e_{domain}.py` | `test_e2e_property.py` |
 
 ---
 
-## 7. Key conventions — never break these
+## Design patterns
 
-### Python conventions
-- All locators live in `locators/` — never hardcode in page files
-- Page objects use `TODO_LOCATORS["key"]` — never raw strings
-- All agents inherit from `agents/base_agent.py`
-- Type hints on all method signatures: `def method(self, text: str) -> bool`
-- Docstring on every class and every public method
-- Section comments inside classes: `# ── navigation ──────`
+### Locators
 
-### Git commit conventions
-- `feat:` new feature or agent
-- `fix:` bug fix or self-heal repair
-- `docs:` documentation, PM artefacts
-- `test:` new test cases
-- `chore:` config, dependencies, CI changes
-- Agent commits always include mode: `feat: Agent 1 — extracted test cases`
+```python
+# locators/trademe_search_locators.py
 
-### Testing conventions
-- Every test has exactly one `@pytest.mark` tag
-- Tests are independent — no shared state
-- Arrange → Act → Assert — always this order
-- One assertion per test where possible
-- Tests named: `test_{what_it_proves}`
+TRADEME_SEARCH_LOCATORS = {
+    "search_box":    "",   # inspect: main search input field
+    "search_button": "",   # inspect: search submit button
+    "page_loaded":   "",   # inspect: stable element confirming load
+}
+```
 
-### Security
-- Never commit `.env` or any API key
-- `GEMINI_API_KEY` and `ANTHROPIC_API_KEY` in `.env` only
-- GitHub secrets for CI pipeline
-- OWASP ZAP scan in every CI run
+**Rules:**
+- ALL CAPS dict name · empty string values — tester fills from DevTools
+- Selector priority: `data-testid` > `aria-label` > `name` > CSS class
+- Never auto-generated class names (`sc-abc123`)
+- Never import Playwright here — pure data
 
 ---
 
-## 8. How Claude should behave in this project
+### PageObject
 
-This is the most important section. Read it before every response.
+```python
+# pages/trademe_search_page.py
+import allure
+from playwright.sync_api import Page
+from locators.trademe_search_locators import TRADEME_SEARCH_LOCATORS
+from utils.actions import Actions
+from utils.functions import Functions
 
-### My level — always adapt to this
-I am a **Python beginner with strong test automation experience**.
-This means:
-- I understand what the code does conceptually
-- I may not know exact Python syntax from memory
-- I need code explained in plain English after it is written
-- I should not be given 10 files at once — one at a time
-- Every new Python concept should have a short "Python lesson" note
+class TradeMeSearchPage:
+    URL = "https://www.trademe.co.nz/a/property/residential/sale"
 
-### Communication style
-- **Simple language always.** No jargon without explanation.
-- **Explain the why** before the how — I need context, not just code
-- **One step at a time.** Do not jump ahead to the next step
-  until I confirm the current one is done
-- **Be direct.** If something is a bad idea, say so clearly
-  with a better alternative — do not just agree with everything
-- **Delivery manager mindset** — think in milestones, risks,
-  and outcomes, not just tasks
+    def __init__(self, page: Page):
+        self.page      = page
+        self.actions   = Actions(page)
+        self.functions = Functions(page)
+        self.loc       = TRADEME_SEARCH_LOCATORS
 
-### When writing code
-1. **Plan first for Modes 1, 2, 3** — describe what you are about
-   to build before writing a single line
-2. **One file at a time** — never dump 5 files in one response
-3. **Always say which file to create/edit** and exactly where in
-   the folder structure it lives
-4. **After the code** — add a short "Python lesson" explaining
-   any new concept used
-5. **Always include the run command** — what to type in the
-   terminal to execute it
-6. **Always include the verify step** — what success looks like
+    @allure.step("Navigate to Trade Me property search")
+    def navigate(self):
+        self.page.goto(self.URL)
+        self.actions.wait_for_page_load()
+        self.functions.accept_cookies()
 
-### When I report a bug
-- **Do NOT start by trying to fix it**
-- **Step 1 — write a failing test first**
-  Write a pytest test that reproduces the bug exactly.
-  Run it — it must FAIL before any fix is attempted.
-  This test is the proof the bug exists.
-- **Step 2 — use subagents to fix it**
-  Spawn subagent approaches in parallel where possible.
-  Each subagent attempts a different fix strategy.
-  Compare results before committing to one approach.
-- **Step 3 — prove the fix with a passing test**
-  Run the same test written in Step 1.
-  It must now PASS. A passing test is the only acceptable
-  proof that the bug is fixed — not a description, not a
-  code review, not an assumption.
-- **Step 4 — commit both together**
-  The fix commit always includes the test that proves it.
-  Commit message: `fix: [bug description] — test added`
-- This is TDD (Test Driven Development). The test is the
-  proof, not the opinion.
+    @allure.step("Search for '{term}'")
+    def search_for(self, term: str):
+        self.actions.wait_for_visible(self.loc["search_box"])
+        self.actions.fill(self.loc["search_box"], term)
+        self.actions.click(self.loc["search_button"])
+        self.actions.wait_for_page_load()
+```
 
-### When I share an error
-- Read the full traceback bottom-up — the last line is the problem
-- Fix the specific error only — do not rewrite the whole file
-- Explain what caused it in one sentence
-- Give the exact replacement code, not a description of what to change
-- If it is a recurring pattern, explain how to avoid it in future
-
-### When I ask a question
-- Answer directly first, then explain
-- If the question reveals a misunderstanding, correct it kindly
-- Connect the answer back to the framework wherever possible
-- Use the framework's own code as examples, not generic examples
-
-### What Claude should never do
-- Never write code without telling me which file it goes in
-- Never skip the run command and verify step
-- Never use advanced Python patterns without explaining them
-- Never assume I know what a library does — always one line on why
-- Never rewrite a working file when only one method needs changing
-- Never commit anything — all commits go through the approval gate
-- Never add features I did not ask for — scope creep kills timelines
-- Never give me more than one decision to make at a time
-- Never try to fix a bug before writing a failing test for it first
+**Rules:**
+- One class per screen
+- Never call `page.locator()` directly — always `Actions` or `Functions`
+- `@allure.step` on every public method
+- Type hints on all arguments and return types
+- No assertions in PageObjects
 
 ---
 
-## 9. Definition of Done
+### Facade
 
-Every piece of code I ask for must meet ALL of these before it is
-considered complete. Claude should self-check this list before
-presenting any code.
+```python
+# facade/trademe_facade.py
+import allure
+from playwright.sync_api import Page
+from pages.trademe_search_page import TradeMeSearchPage
+from pages.trademe_results_page import TradeMeResultsPage
 
-### Code quality
-- [ ] Correct Python syntax — no IndentationError or SyntaxError
-- [ ] Follows project conventions (locators separate, POM pattern,
-      agent inherits BaseAgent)
-- [ ] Type hints on all method signatures
-- [ ] Docstring on every class and public method
-- [ ] No hardcoded values that belong in locators/ or .env
-- [ ] No unused imports
+class TradeMeFacade:
+    def __init__(self, page: Page):
+        self.page = page
 
-### Functionality
-- [ ] The code runs without error from the project root
-- [ ] The run command is provided and works exactly as written
-- [ ] The verify step is provided — I know what success looks like
-- [ ] MOCK_MODE works — full workflow runs without API key
-- [ ] Approval gate works — APPROVE saves, REJECT discards
+    @allure.step("Trade Me: search and filter by price")
+    def search_and_filter(self, term: str, min_price: str, max_price: str) -> TradeMeResultsPage:
+        search = TradeMeSearchPage(self.page)
+        search.navigate()
+        search.search_for(term)
+        results = TradeMeResultsPage(self.page)
+        results.apply_price_filter(min_price, max_price)
+        return results
+```
 
-### Integration
-- [ ] Imports work correctly from project root
-- [ ] `__init__.py` exists in any new folder
-- [ ] New agent inherits from BaseAgent
-- [ ] New locator file exports an UPPER_SNAKE_CASE dict
-- [ ] New page file imports from the correct locators file
-
-### Bug fixes specifically
-- [ ] A FAILING test exists and has been run BEFORE the fix
-- [ ] The SAME test PASSES after the fix is applied
-- [ ] The fix is the minimum change needed — no rewrites
-- [ ] Both the failing-then-passing test AND the fix are
-      committed together in one commit
-
-### Git
-- [ ] File is in the correct folder per the folder structure above
-- [ ] Commit message follows `feat:/fix:/docs:/test:` convention
-- [ ] Nothing committed without going through the approval gate
-- [ ] `.env` and `venv/` never appear in any commit
-
-### Documentation
-- [ ] A "Python lesson" note explains any new concept used
-- [ ] The file has a module docstring at the top explaining what it does
-- [ ] Usage example in the docstring: `Usage: python -m agents.xxx`
+**Rules:**
+- One method per business flow
+- Both BDD step definitions AND E2E Specs call the same Facade
+- `@allure.step` on every method
+- Return the final PageObject for assertions
 
 ---
 
-## 10. My goals — what success looks like
+### TestContext (shared test state)
 
-### 4-day build goals
-- [ ] Day 1: Python env, Playwright POM, HAR, Claude API connected
-- [ ] Day 2: 4 AI agents + approval gateway + e2e smoke test passing
-- [ ] Day 3: Docker build running + GitHub Actions CI green + Allure
-      on GitHub Pages
-- [ ] Day 4: Azure AKS deployment + PM artefacts + README polished +
-      v1.0.0 tagged
+```python
+# context/test_context.py
 
-### Portfolio goals
-- Public GitHub repo that a hiring manager can read in 60 seconds
-  and understand both the engineering and the product thinking
-- CI badge green in README
-- Live Allure report URL in README
-- PRODUCT_VISION.md, DECISION_LOG.md and METRICS.md all present
-- README hero statement that signals AI PM + Architect in one breath
+class TestContext:
+    """
+    Shared test state per test run.
+    Fixtures set state. ServiceLayer reads state. APIClient posts back.
+    Replaces the Cucumber 'World' pattern with Python-Pytest idiom.
+    """
+    def __init__(self):
+        self.resource    = None    # what is being tested
+        self.user        = None    # who is testing
+        self.api_response: APIResponse = None   # last APIClient response
+        self.data:  dict = {}      # shared test data
+        self.retry       = RetryManager()
+        self.log         = Logger()
 
-### Learning goals
-- Understand enough Python to read and review every file I own
-- Be able to explain every architectural decision in an interview
-- Be able to demo the full agent loop in under 3 minutes
-- Be able to describe the PM artefacts as real product decisions,
-  not just documents
+    def set(self, resource: str, user: str):
+        self.resource = resource
+        self.user     = user
 
-### Career goals
-- Secure a role as AI Test Automation Architect or AI PM at a company
-  building internal tooling or platform engineering products
-- Use this repo as the primary portfolio piece in job applications
-- Be able to speak to every technology choice with a clear rationale
+    def post_back(self, response: "APIResponse"):
+        """Update context from APIClient response — closes the loop."""
+        self.api_response = response
+        if isinstance(response.body, dict):
+            self.data.update(response.body)
+```
+
+**conftest.py fixture:**
+```python
+@pytest.fixture
+def test_context() -> TestContext:
+    """Inject TestContext into every test via fixture."""
+    return TestContext()
+```
+
+**In step definitions (behave):**
+```python
+def before_scenario(context, scenario):
+    context.tc = TestContext()
+
+@given("the user is authenticated as admin")
+def step_auth(context):
+    context.tc.set(resource="property", user="admin")
+    TradeMeFacade(context.page).login(context.tc.user)
+```
 
 ---
 
-## 11. Running the framework
+### ServiceLayer (replaces Domain)
+
+```python
+# services/property_service.py
+
+class PropertyService:
+    """
+    Orchestrates requests for the property domain.
+    Called by step definitions with TestContext.
+    """
+    def __init__(self, tc: TestContext):
+        self.tc     = tc
+        self.client = APIClient(base_url=config.BASE_URL)
+
+    def search(self, term: str) -> APIResponse:
+        response = self.client.get(
+            endpoint="/v1/Search/Property/Residential.json",
+            params={"search_string": term},
+            auth=self.tc.user
+        )
+        self.tc.post_back(response)   # post-back closes the loop
+        return response
+```
+
+---
+
+### APIClient + APIResponse (replaces RestClient / GatewayAPI)
+
+```python
+# api/api_client.py
+
+class APIClient:
+    """
+    Wraps httpx. Handles auth, request construction, response parsing.
+    All API calls go through this — never raw httpx in tests.
+    """
+    def get(self, endpoint: str, params: dict = None, auth=None) -> "APIResponse":
+        ...
+
+@dataclass
+class APIResponse:
+    status:        int
+    body:          dict
+    response_time: float
+    text:          str
+    mocked:        bool = False
+```
+
+---
+
+### DataFactory
+
+```python
+# utils/data_factory.py
+
+class DataFactory:
+    """
+    Generates test data. Never hardcode test data in tests.
+    Uses automation-pylib data_structures as base.
+    """
+    @staticmethod
+    def property_search(term: str = "Wellington homes", **overrides) -> dict:
+        base = {"search_string": term, "rows": 10}
+        return {**base, **overrides}
+
+    @staticmethod
+    def user(role: str = "buyer") -> dict:
+        return {"username": f"test_{role}@example.com", "role": role}
+```
+
+---
+
+## Behaviour capture pipeline
+
+### Three-layer model
+
+```
+Playwright Trace  →  WHAT happened
+       ↓
+MCP Intent Engine →  WHY it happened
+       ↓
+Windsurf          →  HOW to automate it
+```
+
+### Layer 1 — Playwright Trace (WHAT)
+
+Captures raw browser events: network requests, DOM snapshots, screenshots, video, user actions, console logs, timing.
+
+```python
+# context/test_context.py — trace enabled in conftest.py fixture
+
+# conftest.py
+@pytest.fixture
+def browser_context(browser):
+    context = browser.new_context()
+    context.tracing.start(
+        screenshots=True,
+        snapshots=True,
+        sources=True
+    )
+    yield context
+    context.tracing.stop(
+        path=f"reports/traces/{pytest.current_test_name}.zip"
+    )
+    context.close()
+```
+
+Trace files are saved to `reports/traces/` on every test run and uploaded as CI artifacts.
+
+---
+
+### Layer 2 — MCP Intent Engine (WHY)
+
+Reads the Playwright trace and infers:
+
+- **Intent detection** — what the user was trying to do (login, checkout, view dashboard, filter results)
+- **Causality chain** — click → API call → DOM update → state change
+- **Semantic role understanding** — what each UI element means (submit button, error message, product card)
+- **Auth pattern detection** — which API calls set up session tokens, cookies, headers
+
+```python
+# capture/mcp_analyser.py
+
+class MCPAnalyser:
+    """
+    Sends Playwright trace to MCP for intent + causality analysis.
+    Output feeds into Windsurf for test generation.
+    """
+    def analyse(self, trace_path: str) -> MCPAnalysis:
+        """
+        Returns:
+          intent:     str       "property_search_and_filter"
+          causality:  list[str] ["click search → GET /api/search → results DOM update"]
+          auth_apis:  list[str] ["/oauth/token", "/api/session"]
+          role_map:   dict      {"search_box": "textbox[name='search']"}
+          flaky_risk: str       "high" | "medium" | "low"
+        """
+        ...
+```
+
+---
+
+### Layer 3 — Windsurf (HOW)
+
+Takes MCP analysis + your framework conventions (`CLAUDE.md` + `skills/`) and generates:
+
+- **PageObject** with role-based locators (not brittle CSS selectors)
+- **pytest test** using your POM + fixture patterns
+- **APIClient setup** — session + auth shortcut from inferred auth APIs
+- **API + UI optimisation** — single trace used for both API and UI test generation
+
+```python
+# capture/windsurf_exporter.py
+
+class WindsurfExporter:
+    """
+    Formats MCP analysis output for Windsurf consumption.
+    Windsurf reads:
+      - MCP analysis JSON
+      - CLAUDE.md (framework conventions)
+      - skills/PAGE_OBJECT_SKILL.md
+      - Playwright trace (optional deep reference)
+    """
+    def export(self, analysis: MCPAnalysis, output_dir: str):
+        payload = {
+            "intent":          analysis.intent,
+            "causality":       analysis.causality,
+            "role_locators":   analysis.role_map,
+            "auth_setup":      analysis.auth_apis,
+            "framework_style": "pytest_pom",
+            "conventions_ref": "CLAUDE.md"
+        }
+        self._write_json(payload, f"{output_dir}/windsurf_input.json")
+```
+
+---
+
+### Semi-automated capture workflow
+
+Use this for: new features, complex flows, flaky test areas.
+
+```
+Step 1 — Record
+  playwright codegen --save-trace reports/traces/feature_x.zip
+
+Step 2 — Analyse with MCP
+  python -m capture.mcp_analyser --trace reports/traces/feature_x.zip
+
+Step 3 — Export for Windsurf
+  python -m capture.windsurf_exporter --analysis output/analysis.json
+
+Step 4 — Windsurf generates tests
+  Windsurf reads windsurf_input.json + CLAUDE.md + skills/
+  → generates pages/{screen}_page.py
+  → generates tests/{feature}_test.py
+  → uses role locators not brittle CSS
+
+Step 5 — Approval gate
+  Review generated files → APPROVE → git commit
+```
+
+---
+
+### CI failure capture
+
+On every CI test failure:
+1. `conftest.py` saves `reports/traces/{test_name}.zip`
+2. `ci_failure_capture.py` appends to `reports/failures.json`
+3. Trace + `failures.json` uploaded as CI artifacts
+4. Agent 4 reads both and classifies failure
+5. If `locator` → Agent 3 heals using MCP live DOM snapshot
+6. If `logic` → fix plan generated, routed to approval gate
+
+```python
+# capture/ci_failure_capture.py
+
+class CIFailureCapture:
+    """
+    Captures full context on CI failure.
+    Output feeds into Agent 4 (failure_analysis_agent).
+    """
+    def capture(self, item, call, report):
+        record = {
+            "timestamp":   datetime.now().isoformat(),
+            "test":        item.nodeid,
+            "error":       str(call.excinfo.value)[:500],
+            "category":    self._classify(call.excinfo),
+            "trace_path":  f"reports/traces/{item.name}.zip",
+            "screenshot":  f"reports/screenshots/{item.name}.png",
+            "mcp_input":   None    # filled by mcp_analyser on flaky failures
+        }
+        self._append_to_failures_json(record)
+
+    def _classify(self, excinfo) -> str:
+        err = type(excinfo.value).__name__
+        if "Timeout" in err:       return "locator"
+        if "Assertion" in err:     return "logic"
+        if "Connection" in err:    return "environment"
+        return "unknown"
+```
+
+---
+
+### Role-based locators (Windsurf output)
+
+Instead of brittle CSS, Windsurf generates role-based locators that survive UI changes:
+
+```python
+# Brittle — breaks when class names change
+SEARCH_LOCATORS = {
+    "search_box": "input.sc-abc123-search",   # WRONG
+}
+
+# Role-based — survives redesigns (Windsurf output)
+SEARCH_LOCATORS = {
+    "search_box":    "input[aria-label='Search properties']",
+    "search_button": "button[type='submit']",
+    "results_count": "[role='status']",
+}
+```
+
+Windsurf can also infer `page.get_by_role()` and `page.get_by_label()` patterns from the MCP semantic analysis, which are even more resilient.
+
+---
+
+## Agent modes
+
+| Mode | File | Plan mode | Trigger |
+|------|------|-----------|---------|
+| 1 | `test_reader_agent.py` | YES | reads existing `.py` scripts |
+| 2 | `bdd_generator_agent.py` | YES | generates Gherkin from test cases |
+| 3 | `bdd_generator_agent.py` | YES | generates step definitions |
+| 4 | (direct edit) | NO | adds one method to existing class |
+| 5 | `self_heal_agent.py` | NO | scoped locator fix via MCP |
+| 6 | (allure + capture config) | NO | reporting + trace setup |
+
+**Plan mode = output a plan before writing any code:**
+1. Files to create or modify
+2. Classes and methods to add
+3. Imports needed
+4. Assumptions about missing selectors or data
+
+Wait for explicit approval before writing.
+
+---
+
+## Self-healing (Agent 3 + MCP)
+
+When `TimeoutError` fires in CI or locally:
+
+1. `conftest.py` catches it and saves trace
+2. Extracts broken locator from error message
+3. `SelfHealAgent` connects to MCP with live DOM snapshot (not HTML string)
+4. MCP infers correct role-based locator
+5. Shows diff → APPROVE → patches locator file → git commit
+
+**Never auto-commit. Always show diff first.**
+
+---
+
+## Multi-browser
 
 ```bash
-# activate venv — always do this first
-venv\Scripts\activate                    # Windows
-source venv/bin/activate                 # Mac/Linux
+pytest tests/ --browser chromium   # default
+pytest tests/ --browser firefox
+pytest tests/ --browser webkit
 
-# run all tests
-pytest tests/ -v
-
-# run smoke tests only
-pytest tests/ -v -m smoke
-
-# run regression suite
-pytest tests/ -v -m regression
-
-# run Mode 1 — auto-detect source type
-python -m agents.test_reader_agent
-
-# run Mode 1 with a specific intake source
-python -m agents.test_reader_agent --source intake/scripts/test_todo.py
-python -m agents.test_reader_agent --source intake/manual/test_cases.xlsx
-python -m agents.test_reader_agent --source intake/requirements/requirements.txt
-
-# run other agents
-python -m agents.bdd_generator_agent
-python -m agents.self_heal_agent
-python -m agents.failure_analysis_agent
-
-# run full e2e loop
-python scripts/e2e_smoke_test.py
-
-# record HAR (run once only)
-python scripts/record_har.py
-
-# build Docker image
-docker build -t ai-test-framework .
-
-# run tests in Docker
-docker run --env-file .env ai-test-framework
-
-# check git log
-git log --oneline -10
+# CI matrix runs all three in parallel
+# Allure tags each result with browser name
 ```
 
 ---
 
-## 12. Roadmap — what is coming after Day 4
+## Feedback loop
 
-### v2 — full intake layer + API testing (planned)
-- Excel reader (openpyxl) for manual test cases
-- Word reader (python-docx) for requirement documents
-- Confluence reader via API for wiki requirements
-- Jira reader via API for user stories and acceptance criteria
-- REST adapter (httpx) — replaces Postman collections
-- SOAP adapter (zeep) — replaces ReadyAPI SOAP tests
-- GraphQL adapter (gql)
-- Contract testing (jsonschema + pydantic vs OpenAPI spec)
-- Postman collection full importer
-- ReadyAPI project full importer
-- Locust load testing integration
-
-### v3 — MCP integration (planned)
-- MCP server for GitHub — agents read issues and PRs directly
-- MCP server for Azure — agents read pipeline logs automatically
-- MCP server for Confluence — agents pull requirements live
-- MCP server for Jira — agents read stories and acceptance criteria
-- Fully autonomous requirement-to-test pipeline with no manual intake
-
-### v4 — multi-app scale (planned)
-- Framework supports multiple apps simultaneously
-- Shared locator registry across all apps in the portfolio
-- Team approval workflow with Slack notifications
-- Executive dashboard showing test health across all products
+```
+Test fails in CI
+    → trace saved to reports/traces/
+    → failures.json updated
+    → CI uploads both as artifacts
+    → Agent 4 reads failures.json + trace
+    → locator fail → Agent 3 heals (MCP role locator)
+    → logic fail   → fix plan → approval gate → commit
+    → flaky        → quarantine + MCPAnalyser captures intent
+    → Re-run → Allure trend chart updates
+    → ↻ each run improves CI stability
+```
 
 ---
 
-## 13. Skills — read before generating code
+## Allure structure
 
-Before writing any Page Object, test class, or BDD feature file,
-read the relevant skill file in skills/:
+```
+Allure Dashboard
+├── UI Tests     ← @allure.suite("UI Tests") — BDD-driven
+├── API Tests    ← @allure.suite("API Tests") — Spec-driven
+└── E2E Tests    ← @allure.suite("E2E Tests") — API + UI combined
+```
 
-| Generating | Read first |
-|-----------|-----------|
-| Any locators file | skills/PAGE_OBJECT_SKILL.md |
-| Any page class | skills/PAGE_OBJECT_SKILL.md |
-| Any test class | skills/TEST_CLASS_SKILL.md |
-| Any .feature file | skills/BDD_SKILL.md |
-| Any step definitions | skills/BDD_SKILL.md |
-| Any AI agent | This file section 6 + 7 |
-| Any intake reader | This file section 3 |
+All suites in one report. Trace viewer links embedded in failed test reports.
 
 ---
 
-*Last updated: Day 2 complete — all 4 agents + approval gateway
-verified. intake/ layer designed. Bug TDD workflow added.
-Day 3 next: Docker + GitHub Actions + Allure reporting.*
+## How Cursor should behave
+
+### Before generating any file — read skill first
+- Locators or PageObjects → `skills/PAGE_OBJECT_SKILL.md`
+- Test Spec classes → `skills/TEST_CLASS_SKILL.md`
+- Feature files or steps → `skills/BDD_SKILL.md`
+
+### Naming rules (enforce strictly)
+- `TestContext` not `World` or `Context`
+- `APIClient` not `RestClient` or `GatewayAPI`
+- `APIResponse` not `RestClient Result`
+- `ServiceLayer` not `Domain`
+- `DataFactory` not `DataStore`
+- `step definitions` not `step defs`
+
+### PageObject files
+- Plan mode first for new classes
+- Import: locators dict + `Actions` + `Functions`
+- `@allure.step` on every public method
+- Never raw Playwright calls
+
+### Test Spec files
+- Plan mode for new classes, no plan mode for adding one method
+- Arrange / Act / Assert with inline comments
+- `@allure.title` + `@pytest.mark.*` on every test
+
+### BDD steps
+- Steps call `Facade` only — never `PageObject` directly
+- No Playwright in steps
+
+### API definitions
+- JSON (REST) or XML (SOAP)
+- Always generate matching mock file alongside
+
+### Capture pipeline files
+- `trace_recorder.py` — only configure, never call Playwright directly in tests
+- `mcp_analyser.py` — input is `.zip` trace path, output is `MCPAnalysis` dataclass
+- `windsurf_exporter.py` — output is `windsurf_input.json`, references `CLAUDE.md`
+
+### Bug fixes
+1. Write failing test first — prove it fails
+2. Fix
+3. Prove it passes
+4. Commit both together
+
+---
+
+## Running commands
+
+```bash
+# BDD UI tests
+pytest testCases/ -v --headed
+
+# API tests (mock mode)
+MOCK_MODE=true pytest tests/api/ -v
+
+# API tests (live)
+MOCK_MODE=false pytest tests/api/ -v
+
+# E2E tests
+pytest tests/e2e/ -v --headed
+
+# Specific browser
+pytest tests/ --browser firefox -v
+
+# With retries
+pytest tests/ --reruns 2 -v
+
+# Record trace for capture pipeline
+playwright codegen --save-trace reports/traces/feature_x.zip https://app.example.com
+
+# Run MCP analysis
+python -m capture.mcp_analyser --trace reports/traces/feature_x.zip
+
+# Export for Windsurf
+python -m capture.windsurf_exporter --analysis output/analysis.json
+
+# Allure report
+allure serve reports/allure-results
+
+# Docker
+docker build -t ai-test-framework .
+docker run --env-file .env ai-test-framework pytest tests/ -v
+
+# Agents
+python -m utils.agents.test_reader_agent --source tests/test_todo.py
+python -m utils.agents.bdd_generator_agent
+```
+
+---
+
+## Definition of Done
+
+- [ ] Locators: empty selectors, ALL CAPS dict, role-based preferred
+- [ ] PageObject: uses `Actions` + `Functions`, `@allure.step` on all methods
+- [ ] Facade: created if flow spans multiple screens
+- [ ] BDD feature + steps OR Spec test (not both for same scenario)
+- [ ] API definition + mock file
+- [ ] pytest markers: `smoke` / `regression` / `api` / `ui` / `e2e`
+- [ ] Trace recording enabled in `conftest.py`
+- [ ] Passes locally: `pytest tests/ -v`
+- [ ] Mock mode: `MOCK_MODE=true pytest tests/api/ -v`
+- [ ] No hardcoded credentials
+- [ ] Git committed with descriptive message
+
+---
+
+## Key decisions (do not re-debate)
+
+| Decision | Choice |
+|----------|--------|
+| Shared state class | `TestContext` (Python-Pytest) |
+| UI entry point | BDD feature files |
+| API entry point | Spec (pytest) |
+| Both call | Same `Facade` |
+| API mocking | `_mock.json` / `_mock.xml` + `MOCK_MODE` flag |
+| Locators | Dict with empty strings, role-based preferred |
+| API run selection | Explicit — no auto-discovery |
+| Allure | Combined report, separate suite titles |
+| `automation-pylib` | Import only — never modify |
+| Self-heal locators | Agent 3 via MCP (role-based output) |
+| Behaviour capture | Trace → MCP → Windsurf pipeline |
+| Auth in capture | MCP infers auth APIs for session shortcuts |
+| CI failure artifacts | trace `.zip` + `failures.json` uploaded per run |
+
+---
+
+## Goals
+
+1. Zero manual test creation — agents + Windsurf generate everything
+2. Zero brittle locators — role-based locators from MCP/Windsurf
+3. Zero flaky tests — `RetryManager` + `MCPAnalyser` + quarantine
+4. Zero broken locators surviving CI — Agent 3 heals with MCP
+5. Every run improves CI stability — feedback loop
+6. One Allure dashboard: UI + API + E2E + trace viewer links
+7. Works offline — HAR replay + `MOCK_MODE`

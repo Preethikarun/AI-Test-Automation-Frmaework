@@ -4,7 +4,13 @@ ai-test-framework/
         ├── PAGE_OBJECT_SKILL.md - how to write POMs in this project
         ├── TEST_CLASS_SKILL.md - how to write test classes
         └── BDD_SKILL.md - how to write Gherkin features
-    ├── agents/ # AI agents — Modes 1-5 + failure analysis 
+    ├── agents/ # AI agents — Modes 1-5 + failure analysis
+        ├── base_agent.py
+        ├── bdd_generator_agent.py
+        ├── failure_analysis_agent.py
+        ├── hello_claude.py
+        ├── self_heal_agent.py
+        ├── test_reader_agent.py
     ├── locators/ # Mode 1 — all CSS selectors 
     ├── pages/ # Mode 2 — Page Object Model classes 
     ├── features/ # Mode 3 — Gherkin .feature files 
@@ -16,11 +22,16 @@ ai-test-framework/
     ├── tools/ # Postman + ReadyAPI importers (v2) 
     ├── docs/pm/ # PRODUCT_VISION · DECISION_LOG · METRICS 
     ├── docs/architecture/ # ADRs + agent orchestration diagrams 
-    ├── .github/workflows/ # GitHub Actions CI/CD YAML (Day 3) 
+    ├── .github/workflows/ci.yml # GitHub Actions CI/CD YAML (Day 3) 
     ├── .env # API keys — never commit 
     ├── .gitignore 
     ├── conftest.py # pytest hooks + screenshot on failure 
     ├── pytest.ini # markers: smoke regression flaky 
+    ├── .zap
+    ├── k8s
+    ├── intake
+    ├── scripts
+    
 ****************************************************************************
 
 # AI Test Automation Framework

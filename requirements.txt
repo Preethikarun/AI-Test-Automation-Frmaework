@@ -9,3 +9,5 @@ Pygments==2.20.0
 pytest==9.0.2
 pytest-rerunfailures==16.1
 typing_extensions==4.15.0
+httpx
+openpyxl

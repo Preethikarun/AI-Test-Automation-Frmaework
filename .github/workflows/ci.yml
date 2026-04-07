@@ -2,14 +2,14 @@ name: AI Test Automation Framework CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:      # allows manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
 
-  # ── JOB 1: LINT ───────────────────────────────────────────
+  # ── JOB 1: LINT ────────────────────────────────────────────────
   lint:
     name: Code quality check
     runs-on: ubuntu-latest
@@ -18,10 +18,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.13
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.13"
+          cache: pip
 
       - name: Install linting tools
         run: pip install flake8
@@ -29,77 +30,216 @@ jobs:
       - name: Run flake8
         run: |
           flake8 agents/ pages/ locators/ tests/ \
+                steps/ features/ context/ capture/ \
+                api/ facade/ utils/ \
             --max-line-length=88 \
             --extend-ignore=E203,W503 \
             --exclude=venv/,__pycache__/
 
-  # ── JOB 2: TEST ───────────────────────────────────────────
-  test:
-    name: Run Playwright tests
+  # ── JOB 2: API TESTS (mock — no browser) ──────────────────────
+  api-tests:
+    name: API tests (mock mode)
     runs-on: ubuntu-latest
-    needs: lint           # only runs if lint passes
+    needs: lint
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build Docker image
-        run: docker build -t ai-test-framework .
-
-      - name: Create reports directory
-        run: mkdir -p reports/allure-results reports/screenshots
-
-      - name: Run tests in Docker
-        run: |
-          docker run \
-            -e GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
-            -e ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }} \
-            -v ${{ github.workspace }}/har:/app/har \
-            -v ${{ github.workspace }}/reports:/app/reports \
-            ai-test-framework \
-            pytest tests/ -v \
-              --alluredir=reports/allure-results \
-              --tb=short
-        continue-on-error: true    
-
-      - name: Upload Allure results
-        uses: actions/upload-artifact@v4
-        if: always()              # upload even if tests failed
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
         with:
-          name: allure-results
-          path: reports/allure-results/
-          retention-days: 30
+          python-version: "3.13"
+          cache: pip
 
-      - name: Upload failure screenshots
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create report directories
+        run: mkdir -p reports/allure-results reports/screenshots reports/traces
+
+      - name: Run API tests (mock mode)
+        env:
+          MOCK_MODE: "true"
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          pytest tests/api/ -v \
+            --tb=short \
+            --alluredir=reports/allure-results
+        continue-on-error: true
+
+      - name: Upload API allure results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: failure-screenshots
-          path: reports/screenshots/
-          retention-days: 7
+          name: api-allure-results
+          path: reports/allure-results/
+          retention-days: 30
 
-  # ── JOB 3: REPORT ─────────────────────────────────────────
-  report:
-    name: Publish Allure report
+  # ── JOB 3: UI TESTS (multi-browser matrix) ────────────────────
+  ui-tests:
+    name: UI tests (${{ matrix.browser }})
     runs-on: ubuntu-latest
-    needs: test           # only runs after test job completes
-    if: always()          # publish report even if tests failed
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download Allure results
+      - name: Set up Node.js 20 (Playwright MCP server)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install MCP server
+        run: npm install
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright browser
+        run: playwright install ${{ matrix.browser }} --with-deps
+
+      - name: Create report directories
+        run: mkdir -p reports/allure-results reports/screenshots reports/traces
+
+      - name: Run BDD UI tests
+        env:
+          MOCK_MODE: "false"
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          pytest testCases/ -v \
+            --browser ${{ matrix.browser }} \
+            --reruns 2 \
+            --tb=short \
+            --alluredir=reports/allure-results
+        continue-on-error: true
+
+      - name: Upload traces on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: traces-${{ matrix.browser }}
+          path: reports/traces/
+          retention-days: 7
+
+      - name: Upload screenshots on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: screenshots-${{ matrix.browser }}
+          path: reports/screenshots/
+          retention-days: 7
+
+      - name: Upload UI allure results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-allure-results-${{ matrix.browser }}
+          path: reports/allure-results/
+          retention-days: 30
+
+  # ── JOB 4: E2E TESTS (API + UI combined) ──────────────────────
+  e2e-tests:
+    name: E2E tests
+    runs-on: ubuntu-latest
+    needs: [api-tests, ui-tests]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install MCP server
+        run: npm install
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright browsers
+        run: playwright install chromium --with-deps
+
+      - name: Create report directories
+        run: mkdir -p reports/allure-results reports/screenshots reports/traces
+
+      - name: Run E2E tests
+        env:
+          MOCK_MODE: "false"
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TRADEME_CLIENT_ID: ${{ secrets.TRADEME_CLIENT_ID }}
+          TRADEME_CLIENT_SECRET: ${{ secrets.TRADEME_CLIENT_SECRET }}
+        run: |
+          pytest tests/e2e/ -v \
+            --browser chromium \
+            --reruns 2 \
+            --tb=short \
+            --alluredir=reports/allure-results
+        continue-on-error: true
+
+      - name: Upload E2E traces on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-traces
+          path: reports/traces/
+          retention-days: 7
+
+      - name: Upload E2E allure results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-allure-results
+          path: reports/allure-results/
+          retention-days: 30
+
+  # ── JOB 5: ALLURE REPORT ──────────────────────────────────────
+  report:
+    name: Publish Allure report
+    runs-on: ubuntu-latest
+    needs: [api-tests, ui-tests, e2e-tests]
+    if: always()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all allure results
         uses: actions/download-artifact@v4
         with:
-          name: allure-results
+          pattern: "*-allure-results*"
           path: reports/allure-results/
+          merge-multiple: true
         continue-on-error: true
 
       - name: Ensure allure-results folder exists
         run: mkdir -p reports/allure-results
 
-      - name: Set up Java (Allure needs it)
+      - name: Set up Java (Allure requires it)
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -130,17 +270,21 @@ jobs:
 
       - name: Post report URL to job summary
         run: |
-          echo "## Allure Report" >> $GITHUB_STEP_SUMMARY
-          echo "Published to GitHub Pages:" >> $GITHUB_STEP_SUMMARY
-          echo "https://YOUR_USERNAME.github.io/ai-test-automation-framework" \
-            >> $GITHUB_STEP_SUMMARY
+          echo "## Test Report" >> $GITHUB_STEP_SUMMARY
+          echo "**Allure Dashboard:** https://YOUR_USERNAME.github.io/ai-test-automation-framework" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Suite | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| API Tests | ${{ needs.api-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| UI Tests | ${{ needs.ui-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| E2E Tests | ${{ needs.e2e-tests.result }} |" >> $GITHUB_STEP_SUMMARY
 
-  # ── JOB 4: SECURITY (stretch) ─────────────────────────────
+  # ── JOB 6: SECURITY SCAN (main branch only) ───────────────────
   security:
     name: OWASP ZAP security scan
     runs-on: ubuntu-latest
-    needs: test
-    if: github.ref == 'refs/heads/main'   # main branch only
+    needs: [api-tests, ui-tests]
+    if: github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout code
@@ -151,8 +295,8 @@ jobs:
         with:
           target: "https://demo.playwright.dev/todomvc"
           rules_file_name: ".zap/rules.tsv"
-          cmd_options: "-I"             # -I = don't fail on warnings
-        continue-on-error: true         # don't block pipeline on findings
+          cmd_options: "-I"
+        continue-on-error: true
 
       - name: Upload ZAP report
         uses: actions/upload-artifact@v4
@@ -162,11 +306,11 @@ jobs:
           path: report_html.html
           retention-days: 30
 
-  # ── JOB 5: AKS DEPLOY (runs on main branch only) ──────────
+  # ── JOB 7: AKS DEPLOY (main branch + flag enabled) ────────────
   deploy-aks:
     name: Deploy to Azure AKS
     runs-on: ubuntu-latest
-    needs: test
+    needs: [api-tests, ui-tests, e2e-tests]
     if: |
       github.ref == 'refs/heads/main' &&
       vars.AZURE_DEPLOY_ENABLED == 'true'
@@ -182,8 +326,7 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Log in to ACR
-        run: |
-          az acr login --name ${{ secrets.AZURE_REGISTRY_NAME }}
+        run: az acr login --name ${{ secrets.AZURE_REGISTRY_NAME }}
 
       - name: Build and push image to ACR
         run: |
@@ -199,12 +342,10 @@ jobs:
             --name ${{ secrets.AZURE_CLUSTER_NAME }}
 
       - name: Update image tag in job manifest
-        run: |
-          sed -i "s|:latest|:${{ github.sha }}|g" k8s/test-job.yaml
+        run: sed -i "s|:latest|:${{ github.sha }}|g" k8s/test-job.yaml
 
-      - name: Apply namespace and secrets template
-        run: |
-          kubectl apply -f k8s/namespace.yaml
+      - name: Apply namespace
+        run: kubectl apply -f k8s/namespace.yaml
 
       - name: Run test job on AKS
         run: |
