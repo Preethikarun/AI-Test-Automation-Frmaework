@@ -1,18 +1,44 @@
 """
-This is a dict — key-value pairs in curly braces.
-Page class uses these keys, never raw selectors directly — so if
-a selector changes, you update it here once.
+Locators for the TodoMVC page.
+URL: https://demo.playwright.dev/todomvc
+
+Organised as nested dicts by UI section so related selectors are
+grouped and access reads like: TODO_LOCATORS["form"]["new_input"].
+
+Selector strategy (preferred order):
+  1. Placeholder / user-facing attribute  →  //input[@placeholder='...']
+  2. ARIA role + accessible name          →  role=textbox[name='...']
+  3. Stable text content                  →  //button[normalize-space()='...']
+  4. Structural XPath                     →  //ul[...]/li//input[...]
+  (Never use auto-generated class names like sc-abc123)
 """
 
 TODO_LOCATORS = {
-    "new_input": "input.new-todo",
-    "todo_items": ".todo-list li",
-    "item_label": ".todo-list li label",
-    "item_checkbox": ".todo-list li .toggle",
-    "todo_count": ".todo-count strong",
-    "clear_completed": "button.clear-completed",
-    "toggle_all": "label[for='toggle-all']",
-    "filter_all": "a[href='#/']",
-    "filter_active": "a[href='#/active']",
-    "filter_completed": "a[href='#/completed']",
+
+    # ── form ─────────────────────────────────────────────────────────────────
+    "form": {
+        "new_input":    "//input[@placeholder='What needs to be done?']",
+        "toggle_all":   "//label[@for='toggle-all']",
+    },
+
+    # ── list ─────────────────────────────────────────────────────────────────
+    "list": {
+        "items":        "//ul[contains(@class,'todo-list')]/li",
+        "label":        "//ul[contains(@class,'todo-list')]/li//label",
+        "checkbox":     "//ul[contains(@class,'todo-list')]/li//input[@class='toggle']",
+        "destroy":      "//ul[contains(@class,'todo-list')]/li//button[@class='destroy']",
+    },
+
+    # ── footer ────────────────────────────────────────────────────────────────
+    "footer": {
+        "count":            "//span[@class='todo-count']/strong",
+        "clear_completed":  "//button[normalize-space()='Clear completed']",
+    },
+
+    # ── filters ───────────────────────────────────────────────────────────────
+    "filters": {
+        "all":          "//ul[@class='filters']//a[@href='#/']",
+        "active":       "//ul[@class='filters']//a[@href='#/active']",
+        "completed":    "//ul[@class='filters']//a[@href='#/completed']",
+    },
 }

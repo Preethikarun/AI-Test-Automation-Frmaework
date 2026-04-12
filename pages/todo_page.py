@@ -20,30 +20,30 @@ class TodoPage:
 
     # ── actions ─────────────────────────────────
     def add_item(self, text: str) -> None:
-        self.page.fill(TODO_LOCATORS["new_input"], text)
+        self.page.fill(TODO_LOCATORS["form"]["new_input"], text)
         self.page.keyboard.press("Enter")
 
     def complete_item(self, index: int = 0) -> None:
-        checkboxes = self.page.locator(TODO_LOCATORS["item_checkbox"])
+        checkboxes = self.page.locator(TODO_LOCATORS["list"]["checkbox"])
         checkboxes.nth(index).click()
 
     def delete_item(self, index: int = 0) -> None:
-        item = self.page.locator(TODO_LOCATORS["todo_items"]).nth(index)
+        item = self.page.locator(TODO_LOCATORS["list"]["items"]).nth(index)
         item.hover()
-        item.locator("button.destroy").click()
+        item.locator(TODO_LOCATORS["list"]["destroy"]).click()
 
     def clear_completed(self) -> None:
-        self.page.click(TODO_LOCATORS["clear_completed"])
+        self.page.click(TODO_LOCATORS["footer"]["clear_completed"])
 
     # ── queries ─────────────────────────────────
     def get_item_count(self) -> int:
-        count_text = self.page.locator(TODO_LOCATORS["todo_count"]).text_content()
+        count_text = self.page.locator(TODO_LOCATORS["footer"]["count"]).text_content()
         return int(count_text.strip())
 
     def get_all_items(self) -> list[str]:
-        return self.page.locator(TODO_LOCATORS["item_label"]).all_text_contents()
+        return self.page.locator(TODO_LOCATORS["list"]["label"]).all_text_contents()
 
     def is_item_visible(self, text: str) -> bool:
         return self.page.locator(
-            TODO_LOCATORS["todo_items"], has_text=text
+            TODO_LOCATORS["list"]["items"], has_text=text
         ).is_visible()

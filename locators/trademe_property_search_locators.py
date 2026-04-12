@@ -1,93 +1,78 @@
 """
-locators/trademe_property_search_locators.py
+Locators for the TradeMe Property Search page.
+URL: https://www.trademe.co.nz/a/property/residential/sale
 
-Locator skeleton for trademe property_search screen.
+Organised as nested dicts by UI section.
 Fill each empty string value from DevTools inspection.
 
-Selector priority:
-  data-testid > aria-label > name attribute > CSS class
-
-Never use auto-generated class names (e.g. sc-abc123).
+Selector strategy (preferred order):
+  1. ARIA role + accessible name          →  role=button[name='Search']
+  2. Placeholder / user-facing attribute  →  //input[@placeholder='...']
+  3. aria-label                           →  //input[@aria-label='...']
+  4. Stable text content                  →  //button[normalize-space()='Apply']
+  5. Structural XPath                     →  //section[@data-testid='results']//li
+  (Never use auto-generated class names like sc-abc123)
 """
-
-# Selector priority: data-testid > aria-label > name > CSS class
 
 TRADEME_PROPERTY_SEARCH_LOCATORS = {
 
-    # -------------------------------------------------------------------------
-    # SEARCH BAR
-    # -------------------------------------------------------------------------
-    "search_input": "",                  # inspect: main keyword/search text input field on the property search page
-    "search_button": "",                 # inspect: primary Search / Find button next to the search input
+    # ── search bar ────────────────────────────────────────────────────────────
+    "search": {
+        "input":            "",     # //input[@aria-label='Search'] or [@placeholder='...']
+        "button":           "",     # //button[normalize-space()='Search'] or [@aria-label='Search']
+    },
 
-    # -------------------------------------------------------------------------
-    # PRICE FILTER
-    # -------------------------------------------------------------------------
-    "min_price_input": "",               # inspect: minimum price input field in the filter/refine panel
-    "max_price_input": "",               # inspect: maximum price input field in the filter/refine panel
+    # ── filter panel ─────────────────────────────────────────────────────────
+    "filters": {
+        "min_price":        "",     # //input[@aria-label='Minimum price'] or [@placeholder='Min price']
+        "max_price":        "",     # //input[@aria-label='Maximum price'] or [@placeholder='Max price']
+        "suburb":           "",     # //input[@aria-label='Suburb'] or [@placeholder='Suburb']
+        "bedrooms":         "",     # //select[@aria-label='Bedrooms'] or [@name='bedrooms']
+        "apply_button":     "",     # //button[normalize-space()='Apply'] or [normalize-space()='Refine']
+    },
 
-    # -------------------------------------------------------------------------
-    # SUBURB FILTER
-    # -------------------------------------------------------------------------
-    "suburb_filter_input": "",           # inspect: suburb text input field in the filter/refine panel
+    # ── results list ─────────────────────────────────────────────────────────
+    "results": {
+        "container":        "",     # //section[@data-testid='search-results'] or role=list
+        "cards":            "",     # //section[...]//li or //article[contains(@class,'listing')]
+        "first_card":       "",     # (//article[contains(@class,'listing')])[1]
+        "card_price":       "",     # //article[...]//span[@data-testid='price'] or [@aria-label='Price']
+        "card_suburb":      "",     # //article[...]//span[@data-testid='suburb'] or [@aria-label='Suburb']
+        "card_bedrooms":    "",     # //article[...]//span[@data-testid='bedrooms'] or [@aria-label='Bedrooms']
+    },
 
-    # -------------------------------------------------------------------------
-    # BEDROOMS FILTER
-    # -------------------------------------------------------------------------
-    "bedrooms_dropdown": "",             # inspect: bedrooms select/dropdown element in the filter/refine panel
+    # ── listing detail — header ───────────────────────────────────────────────
+    "detail_header": {
+        "title":            "",     # //h1[@data-testid='listing-title'] or role=heading[level=1]
+        "address":          "",     # //address or //*[@data-testid='listing-address']
+    },
 
-    # -------------------------------------------------------------------------
-    # APPLY / SUBMIT FILTER
-    # -------------------------------------------------------------------------
-    "apply_filter_button": "",           # inspect: Apply / Refine / Update Results button that submits filter changes
+    # ── listing detail — price ────────────────────────────────────────────────
+    "detail_price": {
+        "value":            "",     # //*[@data-testid='listing-price'] or [@aria-label='Listing price']
+    },
 
-    # -------------------------------------------------------------------------
-    # SEARCH RESULTS LIST
-    # -------------------------------------------------------------------------
-    "results_container": "",             # inspect: outer container / section that wraps all listing cards in results
-    "listing_cards": "",                 # inspect: repeating listing card elements within the results container
-    "first_listing_card": "",            # inspect: first individual listing card (nth-child(1) or :first-of-type)
-    "listing_card_price": "",            # inspect: price label displayed on each listing card in results
-    "listing_card_suburb": "",           # inspect: suburb / location label displayed on each listing card
-    "listing_card_bedrooms": "",         # inspect: bedrooms count badge/label on each listing card
+    # ── listing detail — agent ────────────────────────────────────────────────
+    "detail_agent": {
+        "name":             "",     # //*[@data-testid='agent-name'] or [@aria-label='Agent name']
+        "contact":          "",     # //a[@data-testid='agent-phone'] or [@aria-label='Agent phone']
+        "logo":             "",     # //img[@data-testid='agent-logo'] or [@alt='Agency logo']
+    },
 
-    # -------------------------------------------------------------------------
-    # LISTING DETAIL PAGE — HEADER / TITLE
-    # -------------------------------------------------------------------------
-    "detail_page_title": "",             # inspect: main heading / property title at the top of the listing detail page
-    "detail_page_address": "",           # inspect: full address element on the listing detail page
+    # ── listing detail — container ────────────────────────────────────────────
+    "detail_page": {
+        "container":        "",     # //main[@data-testid='listing-detail'] or role=main
+    },
 
-    # -------------------------------------------------------------------------
-    # LISTING DETAIL PAGE — PRICE
-    # -------------------------------------------------------------------------
-    "detail_page_price": "",             # inspect: price element displayed prominently on the listing detail page
+    # ── pagination ────────────────────────────────────────────────────────────
+    "pagination": {
+        "container":        "",     # //nav[@aria-label='Pagination'] or [@data-testid='pagination']
+        "next_button":      "",     # //a[@aria-label='Next page'] or //button[normalize-space()='Next']
+    },
 
-    # -------------------------------------------------------------------------
-    # LISTING DETAIL PAGE — AGENT INFO
-    # -------------------------------------------------------------------------
-    "detail_agent_name": "",             # inspect: agent or agency name element on the listing detail page
-    "detail_agent_contact": "",          # inspect: agent contact number or email element on the listing detail page
-    "detail_agent_logo": "",             # inspect: agent/agency logo image on the listing detail page
-
-    # -------------------------------------------------------------------------
-    # LISTING DETAIL PAGE — GENERAL
-    # -------------------------------------------------------------------------
-    "detail_page_container": "",         # inspect: outer wrapper/container of the entire listing detail page body
-
-    # -------------------------------------------------------------------------
-    # PAGINATION (results list)
-    # -------------------------------------------------------------------------
-    "pagination_container": "",          # inspect: pagination bar below the results listing
-    "next_page_button": "",              # inspect: Next page arrow/button in pagination
-
-    # -------------------------------------------------------------------------
-    # NO RESULTS / EMPTY STATE
-    # -------------------------------------------------------------------------
-    "no_results_message": "",            # inspect: message element displayed when a search returns zero listings
-
-    # -------------------------------------------------------------------------
-    # LOADING / PROGRESS INDICATORS
-    # -------------------------------------------------------------------------
-    "results_loading_spinner": "",       # inspect: spinner or skeleton loader shown while results are fetching
-
+    # ── empty / loading states ────────────────────────────────────────────────
+    "state": {
+        "no_results":       "",     # //*[@data-testid='no-results'] or [normalize-space()='No results found']
+        "loading_spinner":  "",     # //*[@role='progressbar'] or [@data-testid='loading-spinner']
+    },
 }
