@@ -1,0 +1,80 @@
+==============================================================
+Trade Me — Property Search
+App: trademe
+Screen: property_search
+==============================================================
+
+Test: Search for residential property in Wellington
+Screen: property_search
+Tags: smoke, ui, search, e2e
+Priority: High
+Given: the Trade Me property search page is open at "https://www.trademe.co.nz/a/property/residential/sale"
+When: I type "Wellington homes" in the search box and click Search
+Then: search results appear showing residential properties matching "Wellington homes"
+Data: url="https://www.trademe.co.nz/a/property/residential/sale", search_term="Wellington homes"
+
+---
+
+Test: Filter search results by price range $500,000 to $800,000
+Screen: property_search
+Tags: regression, ui, filter, e2e
+Priority: High
+Given: I am on the Trade Me property search page with results visible
+When: I set the minimum price filter to "$500,000" and the maximum price filter to "$800,000" and apply the filter
+Then: only properties priced between "$500,000" and "$800,000" are displayed in the results
+Data: min_price="$500,000", max_price="$800,000"
+
+---
+
+Test: Filter search results by suburb Wellington Central
+Screen: property_search
+Tags: regression, ui, filter
+Priority: Medium
+Given: I am on the Trade Me property search results page
+When: I filter by suburb "Wellington Central"
+Then: results show only properties in "Wellington Central"
+Data: suburb="Wellington Central"
+
+---
+
+Test: Filter search results by minimum 3 bedrooms
+Screen: property_search
+Tags: regression, ui, filter
+Priority: Medium
+Given: I am on the Trade Me property search results page
+When: I select "3" from the bedrooms filter
+Then: results show only properties with 3 or more bedrooms
+Data: bedrooms="3", filter_label="3+"
+
+---
+
+Test: Verify no results message for an unlikely search term
+Screen: property_search
+Tags: regression, ui, search
+Priority: Low
+Given: the Trade Me property search page is open
+When: I search for "xyznonexistentsuburb99999"
+Then: a no-results message is displayed and no property cards are shown
+Data: search_term="xyznonexistentsuburb99999"
+
+---
+
+Test: Paginate to the second page of search results
+Screen: property_search
+Tags: regression, ui
+Priority: Low
+Given: I have searched for "Wellington" and the results page shows more than one page
+When: I click the Next page button
+Then: the second page of results loads and the URL reflects page 2
+Data: search_term="Wellington", expected_page=2
+
+---
+
+Test: API — Property search endpoint returns Wellington results
+Screen: property_search
+Tags: smoke, api
+Priority: High
+Given: the Trade Me property search API endpoint is available
+When: I send a GET request to "/v1/Search/Property/Residential.json" with search_string="Wellington"
+Then: the response status code is 200 and the response body contains a "List" key with at least 1 result
+Data: endpoint="/v1/Search/Property/Residential.json", search_string="Wellington", expected_status=200, expected_key="List"

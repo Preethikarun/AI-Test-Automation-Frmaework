@@ -1,0 +1,16 @@
+{
+  "name": "JSONPlaceholder — GET all users",
+  "base_url": "https://jsonplaceholder.typicode.com",
+  "method": "GET",
+  "endpoint": "/users",
+  "params": {},
+  "auth": {},
+  "headers": {},
+  "expected": {
+    "status": 200,
+    "response_time_ms": 5000,
+    "fields_exist": [],
+    "field_values": {},
+    "contains_text": "email"
+  }
+}

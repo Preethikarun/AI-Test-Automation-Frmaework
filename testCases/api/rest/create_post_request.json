@@ -1,0 +1,26 @@
+{
+  "name": "JSONPlaceholder — POST create new post",
+  "base_url": "https://jsonplaceholder.typicode.com",
+  "method": "POST",
+  "endpoint": "/posts",
+  "params": {},
+  "auth": {},
+  "headers": {
+    "Content-Type": "application/json; charset=UTF-8"
+  },
+  "body": {
+    "title": "AI Test Framework Post",
+    "body": "Created by the ai-test-framework automated API test suite.",
+    "userId": 1
+  },
+  "expected": {
+    "status": 201,
+    "response_time_ms": 5000,
+    "fields_exist": ["id", "title", "body", "userId"],
+    "field_values": {
+      "title": "AI Test Framework Post",
+      "userId": 1
+    },
+    "contains_text": "AI Test Framework Post"
+  }
+}

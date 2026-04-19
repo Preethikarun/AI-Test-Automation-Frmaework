@@ -1,0 +1,19 @@
+{
+  "name": "JSONPlaceholder — GET single post by ID",
+  "base_url": "https://jsonplaceholder.typicode.com",
+  "method": "GET",
+  "endpoint": "/posts/1",
+  "params": {},
+  "auth": {},
+  "headers": {},
+  "expected": {
+    "status": 200,
+    "response_time_ms": 5000,
+    "fields_exist": ["userId", "id", "title", "body"],
+    "field_values": {
+      "id": 1,
+      "userId": 1
+    },
+    "contains_text": "sunt aut facere"
+  }
+}

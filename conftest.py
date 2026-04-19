@@ -279,3 +279,44 @@ def _safe_name(name: str) -> str:
     """Replace path separators and special chars for file names."""
     import re
     return re.sub(r"[^\w\-]", "_", name)
+
+
+# ══════════════════════════════════════════════════════════════════
+# SECTION 7 — ApprovalGateway hook (Agentic Orchestrator)
+# ══════════════════════════════════════════════════════════════════
+
+def pytest_sessionfinish(session, exitstatus) -> None:
+    """
+    Fire the ApprovalGateway after the full pytest session ends.
+
+    The orchestrator reads failures.json and routes each failure
+    to the right agent:
+        locator     → Agent 3 self-heal (diff + APPROVE)
+        api_timeout → retry / mock-mode guidance
+        logic       → Agent 4 AI fix plan
+        flaky       → Agent 4 quarantine plan
+        environment → escalation report
+
+    Only runs when AUTO_HEAL=true is set (env var or .env file).
+    This keeps CI pipelines clean — the orchestrator is opt-in.
+
+    Enable:
+        # .env
+        AUTO_HEAL=true
+
+        # or inline
+        AUTO_HEAL=true pytest tests/ -v
+    """
+    if exitstatus == 0:
+        return   # all tests passed — nothing to orchestrate
+
+    auto_heal = os.getenv("AUTO_HEAL", "false").strip().lower() == "true"
+    if not auto_heal:
+        return   # opt-in only
+
+    print("\n[ApprovalGateway] AUTO_HEAL=true — starting orchestrator...")
+    try:
+        from utils.agents.approval_gateway import ApprovalGateway
+        ApprovalGateway().run()
+    except Exception as exc:
+        print(f"[ApprovalGateway] Could not start: {exc}")

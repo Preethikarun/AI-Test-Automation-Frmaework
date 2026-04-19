@@ -79,6 +79,7 @@ class BaseAgent:
         kwargs = {
             "model":      self.model,
             "max_tokens": self.MAX_TOKENS,
+            "temperature": 0,          # deterministic — same input → same output
             "messages":   [{"role": "user", "content": prompt}],
         }
         if system:
@@ -87,9 +88,13 @@ class BaseAgent:
         return response.content[0].text
 
     def _call_gemini(self, prompt: str, system: Optional[str]) -> str:
+        from google.genai import types as genai_types
         full_prompt = f"{system}\n\n{prompt}" if system else prompt
+        config      = genai_types.GenerateContentConfig(temperature=0)
         response    = self.client.models.generate_content(
-            model=self.model, contents=full_prompt
+            model=self.model,
+            contents=full_prompt,
+            config=config,
         )
         return response.text
 
@@ -175,6 +180,64 @@ class BaseAgent:
     def _read_json(self, path: Path) -> str:
         data = json.loads(path.read_text(encoding="utf-8"))
         return json.dumps(data, indent=2)
+
+    # ── framework context reader ──────────────────────────────────
+
+    def read_framework_context(self, project_root: str = ".") -> str:
+        """
+        Read the framework's own source files so the AI agent has full
+        awareness of existing utilities, naming conventions, and patterns.
+
+        Reads (in order, silently skips missing files):
+          1. CLAUDE.md                  — naming rules, architecture, patterns
+          2. utils/actions.py           — all available Actions methods
+          3. utils/functions.py         — all available Functions methods
+          4. utils/data_factory.py      — DataFactory methods
+          5. context/test_context.py    — TestContext fields
+          6. facade/*_facade.py         — existing Facade API (steps must call these)
+
+        Returns a single context string to inject into agent system prompts.
+        """
+        root = Path(project_root)
+
+        files_to_read = [
+            ("FRAMEWORK CONVENTIONS (CLAUDE.md)",     root / "CLAUDE.md"),
+            ("ACTIONS UTILITY (utils/actions.py)",     root / "utils" / "actions.py"),
+            ("FUNCTIONS UTILITY (utils/functions.py)", root / "utils" / "functions.py"),
+            ("DATA FACTORY (utils/data_factory.py)",   root / "utils" / "data_factory.py"),
+            ("TEST CONTEXT (context/test_context.py)", root / "context" / "test_context.py"),
+        ]
+
+        # Dynamically include all existing facade files
+        facade_dir = root / "facade"
+        if facade_dir.exists():
+            for f in sorted(facade_dir.glob("*_facade.py")):
+                files_to_read.append((f"FACADE ({f.name})", f))
+
+        sections = []
+        for label, filepath in files_to_read:
+            if not filepath.exists():
+                continue
+            content = filepath.read_text(encoding="utf-8")
+            sections.append(
+                f"\n{'='*60}\n"
+                f"# {label}\n"
+                f"# Path: {filepath}\n"
+                f"{'='*60}\n"
+                f"{content}"
+            )
+
+        if not sections:
+            return ""
+
+        header = (
+            "\n\nFRAMEWORK CONTEXT\n"
+            "=================\n"
+            "The following are the EXISTING framework source files.\n"
+            "You MUST use the utilities, naming conventions, and patterns shown here.\n"
+            "Do NOT invent new helper names — use only what already exists.\n"
+        )
+        return header + "\n".join(sections)
 
     # ── output writer ─────────────────────────────────────────────
 

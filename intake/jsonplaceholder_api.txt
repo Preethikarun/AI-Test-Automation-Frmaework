@@ -1,0 +1,114 @@
+# intake/jsonplaceholder_api.txt
+# API test cases for JSONPlaceholder (https://jsonplaceholder.typicode.com)
+# Free public REST API — no authentication required.
+# Run: python -m utils.agents.pipeline --input intake/jsonplaceholder_api.txt --app jsonplaceholder --screen posts --facade JsonPlaceholderFacade
+
+Test: All posts endpoint returns HTTP 200 with posts array
+Screen: posts
+Tags: smoke, api
+Priority: High
+Given: the JSONPlaceholder API is available at https://jsonplaceholder.typicode.com
+When: a GET request is sent to /posts
+Then: the response status is 200 and the body contains the field "userId"
+Data:
+  base_url: "https://jsonplaceholder.typicode.com"
+  method: "GET"
+  endpoint: "/posts"
+  expected_status: "200"
+  expected_field: "userId"
+  response_time_ms: "5000"
+
+---
+
+Test: Single post by ID returns correct fields
+Screen: posts
+Tags: regression, api
+Priority: High
+Given: the JSONPlaceholder API is available at https://jsonplaceholder.typicode.com
+When: a GET request is sent to /posts/1
+Then: the response status is 200, the body contains fields "userId", "id", "title", "body", and "id" equals 1
+Data:
+  base_url: "https://jsonplaceholder.typicode.com"
+  method: "GET"
+  endpoint: "/posts/1"
+  expected_status: "200"
+  expected_fields: "userId, id, title, body"
+  expected_id: "1"
+  expected_userId: "1"
+  expected_title_contains: "sunt aut facere"
+  response_time_ms: "5000"
+
+---
+
+Test: Non-existent post returns 404
+Screen: posts
+Tags: regression, api
+Priority: Medium
+Given: the JSONPlaceholder API is available at https://jsonplaceholder.typicode.com
+When: a GET request is sent to /posts/99999
+Then: the response status is 404
+Data:
+  base_url: "https://jsonplaceholder.typicode.com"
+  method: "GET"
+  endpoint: "/posts/99999"
+  expected_status: "404"
+  response_time_ms: "5000"
+
+---
+
+Test: Create post returns 201 with the new resource ID
+Screen: posts
+Tags: regression, api
+Priority: High
+Given: the JSONPlaceholder API is available at https://jsonplaceholder.typicode.com
+When: a POST request is sent to /posts with title "AI Test Framework Post", body "Created by the ai-test-framework automated API test suite.", and userId 1
+Then: the response status is 201, the body contains fields "id", "title", "body", "userId", and "title" equals "AI Test Framework Post"
+Data:
+  base_url: "https://jsonplaceholder.typicode.com"
+  method: "POST"
+  endpoint: "/posts"
+  request_title: "AI Test Framework Post"
+  request_body: "Created by the ai-test-framework automated API test suite."
+  request_userId: "1"
+  expected_status: "201"
+  expected_fields: "id, title, body, userId"
+  expected_title: "AI Test Framework Post"
+  expected_userId: "1"
+  response_time_ms: "5000"
+
+---
+
+Test: Users endpoint returns list with email addresses
+Screen: users
+Tags: smoke, api
+Priority: High
+Given: the JSONPlaceholder API is available at https://jsonplaceholder.typicode.com
+When: a GET request is sent to /users
+Then: the response status is 200 and the body contains the field "email"
+Data:
+  base_url: "https://jsonplaceholder.typicode.com"
+  method: "GET"
+  endpoint: "/users"
+  expected_status: "200"
+  expected_field: "email"
+  response_time_ms: "5000"
+
+---
+
+Test: Todo by ID returns completion status
+Screen: todos
+Tags: regression, api
+Priority: Medium
+Given: the JSONPlaceholder API is available at https://jsonplaceholder.typicode.com
+When: a GET request is sent to /todos/1
+Then: the response status is 200, the body contains fields "userId", "id", "title", "completed", and "completed" equals false
+Data:
+  base_url: "https://jsonplaceholder.typicode.com"
+  method: "GET"
+  endpoint: "/todos/1"
+  expected_status: "200"
+  expected_fields: "userId, id, title, completed"
+  expected_id: "1"
+  expected_completed: "false"
+  expected_title: "delectus aut autem"
+  response_time_ms: "5000"

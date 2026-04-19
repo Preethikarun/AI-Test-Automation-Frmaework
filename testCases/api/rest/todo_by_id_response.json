@@ -1,0 +1,12 @@
+{
+  "status": 200,
+  "body": {
+    "userId": 1,
+    "id": 1,
+    "title": "delectus aut autem",
+    "completed": false
+  },
+  "response_time_ms": 88,
+  "text": "{\"userId\":1,\"id\":1,\"title\":\"delectus aut autem\",\"completed\":false}",
+  "mocked": true
+}

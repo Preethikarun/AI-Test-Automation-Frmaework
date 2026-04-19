@@ -5,11 +5,11 @@ Validates an APIResponse against the "expected" block
 in a test definition JSON/XML file.
 
 Validation types (Option D — all four):
-  status         — HTTP status code matches exactly
-  response_time  — response time under threshold (ms)
-  fields_exist   — listed keys present in response body
-  field_values   — specific key-value pairs match
-  contains_text  — substring present in response text
+status         — HTTP status code matches exactly
+response_time  — response time under threshold (ms)
+fields_exist   — listed keys present in response body
+field_values   — specific key-value pairs match
+contains_text  — substring present in response text
 
 Returns a ValidationResult with passed=True/False and
 a list of failure messages for Allure and failures.json.

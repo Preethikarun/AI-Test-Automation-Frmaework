@@ -38,47 +38,64 @@ locators/{page_name}_locators.py
 - Key names: `"snake_case_key"` — lowercase strings
 - One dict per file — one page per file
 
-### Template
+### Template — nested sections dict (REQUIRED format)
+Locators use a two-level nested dict.  Top-level keys are logical UI
+sections (search, filters, results, state).  Inner keys are element names.
+All values are empty strings — the tester fills them from DevTools.
+
 ```python
 """
-Locators for the {PageName} page.
-URL: https://example.com/{path}
+locators/{page_name}_locators.py
 
-All CSS selectors for this page live here.
-Never put raw selectors in page classes or test files.
+XPath selector priority:
+  data-testid > aria-label > placeholder > name > stable text > structural XPath
+Never use CSS class selectors or auto-generated class names.
 """
 
 {PAGE_NAME}_LOCATORS = {
-    # ── primary actions ──────────────────────────────────────
-    "key_name":          "css-selector",
-    "another_key":       "css-selector",
 
-    # ── form fields ──────────────────────────────────────────
-    "input_field":       "input.class-name",
-    "submit_button":     "button[type='submit']",
+    # ── search / form ─────────────────────────────────────────
+    "search": {
+        "input":  "",   # //input[@aria-label='Search'] or //input[@placeholder='...']
+        "button": "",   # //button[normalize-space()='Search'] or //button[@aria-label='Search']
+    },
 
-    # ── result elements ──────────────────────────────────────
-    "result_list":       ".results li",
-    "result_count":      ".count strong",
+    # ── filters ───────────────────────────────────────────────
+    "filters": {
+        "min_price":    "",   # //input[@aria-label='Minimum price'] or //input[@name='price_min']
+        "apply_button": "",   # //button[normalize-space()='Apply'] or //*[@data-testid='apply']
+    },
 
-    # ── navigation ───────────────────────────────────────────
-    "filter_all":        "a[href='#/']",
-    "filter_active":     "a[href='#/active']",
+    # ── results ───────────────────────────────────────────────
+    "results": {
+        "container": "",   # //section[@data-testid='results'] or //*[@role='list']
+        "cards":     "",   # //*[@data-testid='listing-card']
+    },
+
+    # ── page state ────────────────────────────────────────────
+    "state": {
+        "loading_spinner": "",   # //*[@role='progressbar'] or //*[@aria-label='Loading']
+        "no_results":      "",   # //*[@data-testid='no-results']
+    },
 }
 ```
 
-### Selector priority — always prefer in this order
-1. `data-testid` attribute — most stable, survives CSS refactors
-   `"button": "[data-testid='submit-btn']"`
-2. ARIA role + name — semantic, accessible
-   `"dialog": "[role='dialog'][aria-label='Confirm']"`
-3. Unique CSS class — reasonably stable
-   `"input": "input.new-todo"`
-4. CSS combination — when class alone is not unique
-   `"item": ".todo-list li label"`
-5. Text content — only for labels that never change
-   `"heading": "h1:has-text('Welcome')"`
-6. XPath — LAST RESORT only, explain why in a comment
+### Selector priority — XPath only, in this order
+This project uses XPath exclusively. CSS class selectors are banned
+because auto-generated class names (sc-abc123, css-xyz) break silently.
+
+1. `data-testid`      `//input[@data-testid='search-input']`        most stable
+2. `aria-label`       `//input[@aria-label='Search properties']`
+3. `placeholder`      `//input[@placeholder='Search Trade Me']`
+4. `name` attribute   `//input[@name='search_string']`
+5. stable text        `//button[normalize-space()='Search']`
+6. role + label       `//*[@role='button'][@aria-label='Apply']`
+7. structural XPath   `//section[@data-testid='results']//li`       last resort
+
+NEVER use:
+- CSS class selectors  `.new-todo`, `input.something`
+- Auto-generated names `sc-abc123`, `css-xyz`
+- Positional CSS       `div:nth-child(3)`
 
 ### Alignment rule
 Align selector values with spaces so all values start at the same
@@ -122,79 +139,62 @@ pages/{page_name}_page.py
 - Example: `todo_page.py` → `TodoPage`
 
 ### Template — complete page class
+
+CRITICAL RULES for page classes in this framework:
+- NEVER call `page.locator()`, `page.fill()`, `page.click()` directly
+- ALWAYS use the `Actions` and `Functions` wrappers from utils/
+- Locator access is ALWAYS two-level: `self.loc["section"]["key"]`
+- Use `domcontentloaded` (not `networkidle`) — networkidle times out on ad-heavy sites
+- Every public method must have `@allure.step`
+
 ```python
 """
-Page Object for the {PageName} page.
-URL: https://example.com/{path}
+pages/{page_name}_page.py
 
-Wraps all user interactions on this page into clean methods.
-Tests call these methods — never raw Playwright commands.
-
-Usage:
-    page_obj = {PageName}Page(page)
-    page_obj.navigate()
-    page_obj.{action}()
+PageObject for the {AppName} {ScreenName} screen.
+Access locators as: self.loc["section"]["key"]
+Never call page.locator() directly — always go through Actions or Functions.
 """
-from playwright.sync_api import Page, expect
+import allure
+from playwright.sync_api import Page
 from locators.{page_name}_locators import {PAGE_NAME}_LOCATORS
+from utils.actions import Actions
+from utils.functions import Functions
 
 
 class {PageName}Page:
-    """Page Object for {PageName}. One instance per test."""
+    """PageObject for {PageName}. One instance per scenario."""
 
-    URL = "https://example.com/{path}"   # class constant — not in locators
+    URL = "https://example.com/{path}"
 
     def __init__(self, page: Page):
-        """Initialise with a Playwright Page instance."""
-        self.page = page
+        self.page      = page
+        self.actions   = Actions(page)
+        self.functions = Functions(page)
+        self.loc       = {PAGE_NAME}_LOCATORS
 
     # ── navigation ───────────────────────────────────────────
-    def navigate(self):
-        """Navigate to this page and wait for it to fully load."""
+    @allure.step("Navigate to {PageName}")
+    def navigate(self) -> None:
+        """Navigate and wait for the primary element to be interactive."""
         self.page.goto(self.URL)
-        self.page.wait_for_load_state("networkidle")
+        self.actions.wait_for_page_load()          # uses domcontentloaded
+        self.actions.wait_for_visible(self.loc["search"]["input"])
 
     # ── actions ──────────────────────────────────────────────
-    def add_item(self, text: str):
-        """Type text into the input field and press Enter."""
-        self.page.fill({PAGE_NAME}_LOCATORS["new_input"], text)
-        self.page.keyboard.press("Enter")
-
-    def click_button(self, button_key: str = "submit_button"):
-        """Click a button identified by its locator key."""
-        self.page.click({PAGE_NAME}_LOCATORS[button_key])
-
-    def select_filter(self, filter_name: str):
-        """Click a filter tab by name: all | active | completed."""
-        key = f"filter_{filter_name}"
-        self.page.click({PAGE_NAME}_LOCATORS[key])
+    @allure.step("Enter search term: '{term}'")
+    def search_for(self, term: str) -> None:
+        """Fill the search box and submit."""
+        self.actions.wait_for_visible(self.loc["search"]["input"])
+        self.actions.fill(self.loc["search"]["input"], term)
+        self.actions.click(self.loc["search"]["button"])
+        self.actions.wait_for_page_load()
 
     # ── queries ──────────────────────────────────────────────
-    def get_item_count(self) -> int:
-        """Return the number of active items shown in the counter."""
-        text = self.page.locator(
-            {PAGE_NAME}_LOCATORS["result_count"]
-        ).text_content()
-        return int(text.strip())
-
-    def get_all_items(self) -> list[str]:
-        """Return text content of all visible list items."""
-        return self.page.locator(
-            {PAGE_NAME}_LOCATORS["result_list"]
-        ).all_text_contents()
-
-    def is_item_visible(self, text: str) -> bool:
-        """Return True if an item with matching text is visible."""
-        return self.page.locator(
-            {PAGE_NAME}_LOCATORS["result_list"],
-            has_text=text
-        ).is_visible()
-
-    def wait_for_element(self, locator_key: str):
-        """Wait for an element to appear — use before fragile actions."""
-        self.page.locator(
-            {PAGE_NAME}_LOCATORS[locator_key]
-        ).wait_for(state="visible")
+    @allure.step("Check results are visible")
+    def results_visible(self) -> bool:
+        """Return True if the results container is visible."""
+        return self.actions.is_visible(self.loc["results"]["container"])
 ```
 
 ### Method naming conventions

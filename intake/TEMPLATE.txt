@@ -1,0 +1,78 @@
+==============================================================
+INTAKE TEST CASE TEMPLATE
+==============================================================
+Drop your test cases here in plain English.
+The pipeline (Agent 1 → Agent 2) converts them to:
+  ✓  BDD feature file  (.feature)
+  ✓  Step definitions  (_steps.py)
+  ✓  Locator skeleton  (_locators.py)
+  ✓  DataFactory class (data_factory.py)
+
+RULES FOR WRITING INTAKE TEST CASES
+──────────────────────────────────────────────────────────────
+1. Write one test case per block, separated by a blank line or ---
+2. Be SPECIFIC with values:
+     ✓  "search for 'Wellington homes'"     — specific
+     ✗  "search for a property"             — too vague
+     ✓  "max price $800,000"                — specific
+     ✗  "filter by a price"                 — too vague
+3. Include: what you start with, what you do, what you expect
+4. Label the screen (property_search, results, login, checkout, etc.)
+5. Label the priority (High / Medium / Low)
+6. Label the type (smoke, regression, ui, api, e2e, filter, detail, search)
+
+SUPPORTED FORMATS
+──────────────────────────────────────────────────────────────
+You can write intake files as:
+  - Plain text (.txt)     — this format
+  - Markdown  (.md)
+  - CSV       (.csv)      — columns: Name, Given, When, Then, Tags, Priority
+  - Excel     (.xlsx)     — same columns as CSV
+
+==============================================================
+EXAMPLE TEST CASES — copy this pattern
+==============================================================
+
+Test: Search for residential property in Wellington
+Screen: property_search
+Tags: smoke, ui, search
+Priority: High
+Given: the Trade Me property search page is loaded
+When: I type "Wellington" in the search box and click Search
+Then: results appear showing residential properties in Wellington
+Data: search_term="Wellington", expected_location="Wellington"
+
+---
+
+Test: Filter search results by price range $500k to $800k
+Screen: property_search
+Tags: regression, ui, filter
+Priority: High
+Given: I am on the property search results page with results visible
+When: I set the minimum price to "$500,000" and maximum price to "$800,000" and apply
+Then: only properties priced between $500,000 and $800,000 are shown in results
+Data: min_price="$500,000", max_price="$800,000"
+
+---
+
+Test: View a property listing detail page
+Screen: listing_detail
+Tags: regression, ui, detail
+Priority: Medium
+Given: I am viewing search results for "Wellington"
+When: I click on the first property listing in the results
+Then: the property detail page loads with price, bedrooms, and suburb visible
+Data: search_term="Wellington", expected_fields=["price", "bedrooms", "suburb"]
+
+---
+
+Test: API — Search property endpoint returns results
+Screen: property_search
+Tags: smoke, api
+Priority: High
+Given: the Trade Me property search API is available
+When: I send a GET request to "/v1/Search/Property/Residential.json" with search_string="Wellington"
+Then: the response status is 200 and the body contains a "List" array with at least 1 result
+Data: endpoint="/v1/Search/Property/Residential.json", search_string="Wellington", expected_status=200
+
+==============================================================

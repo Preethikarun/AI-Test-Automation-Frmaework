@@ -198,7 +198,7 @@ class Runner:
         client = SoapClient(wsdl_url=wsdl_url, auth=auth)
         params = {
             child.tag: child.text
-            for child in (root.find("params") or [])
+            for child in (root.find("params") if root.find("params") is not None else [])
         }
 
         with allure.step(f"SOAP: {operation}"):

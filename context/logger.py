@@ -49,7 +49,7 @@ class Logger:
     FAILURES_FILE = Path("reports/failures.json")
 
     # ── failure categories (matches Agent 4 classification) ───────
-    CATEGORIES = ("locator", "logic", "environment", "flaky", "unknown")
+    CATEGORIES = ("locator", "api_timeout", "logic", "environment", "flaky", "unknown")
 
     def __init__(self):
         self.FAILURES_FILE.parent.mkdir(parents=True, exist_ok=True)

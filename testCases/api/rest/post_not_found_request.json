@@ -1,0 +1,16 @@
+{
+  "name": "JSONPlaceholder — GET non-existent post returns 404",
+  "base_url": "https://jsonplaceholder.typicode.com",
+  "method": "GET",
+  "endpoint": "/posts/99999",
+  "params": {},
+  "auth": {},
+  "headers": {},
+  "expected": {
+    "status": 404,
+    "response_time_ms": 5000,
+    "fields_exist": [],
+    "field_values": {},
+    "contains_text": ""
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "JSONPlaceholder — GET all posts",
+  "base_url": "https://jsonplaceholder.typicode.com",
+  "method": "GET",
+  "endpoint": "/posts",
+  "params": {},
+  "auth": {},
+  "headers": {},
+  "expected": {
+    "status": 200,
+    "response_time_ms": 5000,
+    "fields_exist": [],
+    "field_values": {},
+    "contains_text": "userId"
+  }
+}

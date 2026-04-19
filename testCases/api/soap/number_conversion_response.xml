@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<\!--
+    testCases/api/soap/number_conversion_response.xml
+
+    Pre-recorded mock SOAP response for MOCK_MODE=true.
+    Special tags: __status__ and __response_time_ms__ are read by MockClient
+    and stripped from the body before validation.
+
+    Real response from dataaccess.com for ubiNum=42:
+      <NumberToWordsResult>forty two </NumberToWordsResult>
+-->
+<response>
+  <__status__>200</__status__>
+  <__response_time_ms__>210</__response_time_ms__>
+  <NumberToWordsResult>forty two </NumberToWordsResult>
+</response>

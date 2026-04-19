@@ -24,12 +24,37 @@ plain-English test cases produced by Agent 1.
 Every BDD feature requires EXACTLY TWO files:
 
 ```
-features/{page_name}.feature    ← Gherkin scenarios
-steps/{page_name}_steps.py      ← Python behave implementations
+testCases/features/{app}_{screen}.feature          ← Gherkin scenarios
+testCases/features/steps/{app}_steps.py            ← Python behave implementations
 ```
 
-Agent 2 generates both and presents them together in one approval
-gate. Approve both or reject both — they are always a pair.
+Agent 2 generates both (plus locators and DataFactory) and presents them
+in one approval gate. Approve all or reject all — they are always a set.
+
+### Steps ONLY call the Facade — never PageObjects directly
+
+```
+Step definitions  →  Facade  →  PageObjects  →  Actions/Functions  →  Playwright
+```
+
+Steps MUST NOT import or call PageObjects, Actions, or Functions.
+Steps MUST import and call the Facade class only.
+
+```python
+# WRONG — step calling PageObject directly
+from pages.trademe_search_page import TradeMeSearchPage
+@given("the search page is open at \"{url}\"")
+def step(context, url):
+    TradeMeSearchPage(context.page).navigate()   # ← BANNED in steps
+
+# CORRECT — step calling Facade
+from facade.trademe_facade import TradeMeFacade
+def _facade(context): return TradeMeFacade(context.page, context.tc)
+
+@given("the search page is open at \"{url}\"")
+def step(context, url):
+    _facade(context).navigate_to_search_page()   # ← Facade only
+```
 
 ---
 
@@ -141,32 +166,29 @@ Feature: Todo application
 
 ### Location
 ```
-steps/{page_name}_steps.py
+testCases/features/steps/{app}_steps.py
 ```
 
 ### Template — complete step definitions file
 ```python
 """
 Step definitions for {feature name} scenarios.
-These implement the Gherkin steps in features/{page_name}.feature.
+Implements: testCases/features/{app}_{screen}.feature
 
-Each function matches one Gherkin step — exact text match.
-String parameters use "{value}" — int parameters use {count:d}.
+RULE: Steps call the Facade ONLY.
+      Never import or call PageObjects, Actions, or Playwright directly.
 """
 from behave import given, when, then
-from pages.{page_name}_page import {PageName}Page
+from facade.{app}_facade import {FacadeClass}
+from context.test_context import TestContext
 
 
-# ── helper ───────────────────────────────────────────────────
-def get_{page_name}(context) -> {PageName}Page:
-    """
-    Get or create the page object on context.
-    Behave passes `context` between steps — we store the page
-    object on it so every step in a scenario shares one instance.
-    """
-    if not hasattr(context, "{page_name}"):
-        context.{page_name} = {PageName}Page(context.page)
-    return context.{page_name}
+# ── facade helper — one instance per scenario ─────────────────
+def _facade(context) -> {FacadeClass}:
+    """Return (or create) the Facade for this scenario."""
+    if not hasattr(context, "_facade_instance"):
+        context._facade_instance = {FacadeClass}(context.page, context.tc)
+    return context._facade_instance
 
 
 # ── given steps ──────────────────────────────────────────────
@@ -394,19 +416,51 @@ def step_not_visible(context, text: str):
 
 ```bash
 # run all feature files
-behave features/
+behave testCases/features/
 
 # run one feature file
-behave features/todo.feature
+behave testCases/features/trademe_property_search.feature
+
+# run one scenario by line number
+behave testCases/features/trademe_property_search.feature:10
 
 # run scenarios tagged smoke
-behave features/ --tags=smoke
+behave testCases/features/ --tags=smoke
 
 # run scenarios tagged regression but not flaky
-behave features/ --tags=regression --tags=~flaky
+behave testCases/features/ --tags=regression --tags=~flaky
 
 # run with verbose output
-behave features/ --no-capture -v
+behave testCases/features/ --no-capture -v
+
+# generate BDD from intake file (pipeline)
+python -m utils.agents.pipeline \
+    --input intake/trademe_property_search.txt \
+    --app trademe \
+    --screen property_search \
+    --facade TradeMeFacade
+```
+
+## DataFactory — use real values, never hardcode in steps
+
+```python
+# WRONG — hardcoded value in step
+@when('I search for "Wellington homes"')
+def step(context):
+    _facade(context).search("Wellington homes")   # ← hardcoded
+
+# CORRECT — value from DataFactory (came from intake DATA block)
+from utils.data_factory import DataFactory
+
+@when('I search for "{term}"')
+def step(context, term: str):
+    _facade(context).search(term)   # ← value comes from Gherkin step parameter
+
+# Use DataFactory for multi-field test data:
+@when("I apply the default price filter")
+def step(context):
+    data = DataFactory.property_search()
+    _facade(context).apply_price_filter(data["min_price"], data["max_price"])
 ```
 
 ---

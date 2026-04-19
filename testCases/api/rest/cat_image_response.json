@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "body": "[binary image — JPEG cat photo]",
+  "response_time_ms": 180,
+  "headers": {
+    "Content-Type": "image/jpeg",
+    "Content-Length": "48291"
+  },
+  "mocked": true
+}

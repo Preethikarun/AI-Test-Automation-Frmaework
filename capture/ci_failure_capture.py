@@ -101,23 +101,59 @@ class CIFailureCapture:
 
     def _classify(self, call: "pytest.CallInfo") -> str:
         """
-        Classify failure category from exception type.
-        Matches Agent 4 classification taxonomy.
+        Classify failure category from exception type and message.
+
+        Categories (matches ApprovalGateway decision matrix):
+          locator     — Playwright TimeoutError waiting for a UI element
+          api_timeout — HTTP/API timeout (httpx, requests, urllib)
+          logic       — AssertionError — test expectation was wrong
+          environment — Network, connection refused, Docker/AKS issues
+          flaky       — Explicitly marked or detected intermittent failure
+          unknown     — Everything else
         """
         if not call.excinfo:
             return "unknown"
 
-        exc_type = type(call.excinfo.value).__name__
+        exc_type = type(call.excinfo.value).__name__.lower()
         exc_msg  = str(call.excinfo.value).lower()
 
-        if "timeout" in exc_type.lower():
-            return "locator"
-        if "assertion" in exc_type.lower():
+        # ── API timeout — httpx / requests / urllib ───────────────────────
+        _api_timeout_signals = (
+            "readtimeout", "connecttimeout", "httptimeout",
+            "requests.exceptions.timeout", "httpx",
+            "connectiontimeout", "sockettimeout",
+        )
+        if "timeout" in exc_type and any(s in exc_msg for s in _api_timeout_signals):
+            return "api_timeout"
+        # also catch when the exception class name itself comes from httpx/requests
+        if any(s in exc_type for s in ("readtimeout", "connecttimeout", "httptimeout")):
+            return "api_timeout"
+
+        # ── Playwright UI locator timeout ─────────────────────────────────
+        # Playwright TimeoutErrors mention "locator" or "waiting for" in the message
+        if "timeout" in exc_type:
+            if any(kw in exc_msg for kw in ("locator", "waiting for", "selector", "element")):
+                return "locator"
+            # generic playwright timeout with no locator hint → still locator category
+            if "playwright" in exc_msg or "page.goto" in exc_msg:
+                return "locator"
+            return "locator"   # safest default for any remaining TimeoutError
+
+        # ── assertion error — test logic is wrong ─────────────────────────
+        if "assertion" in exc_type:
             return "logic"
-        if any(kw in exc_msg for kw in ("connection", "network", "refused")):
+
+        # ── environment — network / infra ─────────────────────────────────
+        if any(kw in exc_msg for kw in (
+            "connection", "network", "refused", "unreachable",
+            "econnrefused", "no route", "name resolution"
+        )):
             return "environment"
+
+        # ── explicitly flaky ──────────────────────────────────────────────
         if any(kw in exc_msg for kw in ("flaky", "intermittent")):
             return "flaky"
+
         return "unknown"
 
     # ── helpers ───────────────────────────────────────────────────

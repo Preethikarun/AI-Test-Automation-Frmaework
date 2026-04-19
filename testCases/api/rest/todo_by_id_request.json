@@ -1,0 +1,19 @@
+{
+  "name": "JSONPlaceholder — GET todo by ID, verify completion status",
+  "base_url": "https://jsonplaceholder.typicode.com",
+  "method": "GET",
+  "endpoint": "/todos/1",
+  "params": {},
+  "auth": {},
+  "headers": {},
+  "expected": {
+    "status": 200,
+    "response_time_ms": 5000,
+    "fields_exist": ["userId", "id", "title", "completed"],
+    "field_values": {
+      "id": 1,
+      "completed": false
+    },
+    "contains_text": "delectus aut autem"
+  }
+}

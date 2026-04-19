@@ -60,6 +60,17 @@ class TradeMeFacade:
     # SECTION 1 — Primary flow: Search → Filter → Listing Detail
     # ══════════════════════════════════════════════════════════════
 
+    @allure.step("Trade Me: navigate to property search page")
+    def navigate_to_search_page(self) -> None:
+        """
+        Open the Trade Me property search page and wait for it to load.
+        Called by BDD Background steps before any search action.
+
+        BDD step:
+            Given the Trade Me property search page is open
+        """
+        self._search.navigate()
+
     @allure.step("Trade Me: search → filter → view first listing detail")
     def search_filter_and_view_detail(
         self,

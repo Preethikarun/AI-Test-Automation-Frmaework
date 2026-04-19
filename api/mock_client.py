@@ -1,20 +1,24 @@
 """
 api/mock_client.py
 
-Mock APIClient — returns responses from _mock.json or _mock.xml files.
-Activated when MOCK_MODE=true in .env.
+Mock APIClient -- returns responses from pre-recorded files.
+Activated when MOCK_MODE=true.
 
-Mock files live alongside their definition files:
-  testCases/api/rest/property_search.json       ← definition
-  testCases/api/rest/property_search_mock.json  ← mock response
+Naming convention (consistent across ALL API tests):
+    {name}_request.json   <- what you send   (HTTP method, endpoint, headers, body)
+    {name}_response.json  <- what comes back  (pre-recorded mock response)
 
-No network call is made. Response time is read from the mock file
-so timing assertions still work against realistic values.
+Examples:
+    posts_list_request.json   + posts_list_response.json
+    cat_image_request.json    + cat_image_response.json
+    create_post_request.json  + create_post_response.json
 
-Usage (handled automatically by Runner — do not call directly):
-    client = MockClient(definition_path="testCases/api/rest/property_search.json")
+MockClient resolves the response file automatically by replacing
+'_request' with '_response' in the definition file stem.
+
+Usage (handled automatically by Runner -- do not call directly):
+    client = MockClient(definition_path="testCases/api/rest/posts_list_request.json")
     response = client.execute()
-    assert response.status == 200
     assert response.mocked is True
 """
 
@@ -28,28 +32,18 @@ from context.test_context import APIResponse
 
 
 class MockClient:
-    """
-    Reads the _mock.json or _mock.xml file matching a definition
-    and returns a pre-built APIResponse.
-    """
 
     def __init__(self, definition_path: str):
         self.definition_path = Path(definition_path)
-        self.mock_path       = self._find_mock_file()
+        self.mock_path = self._find_mock_file()
 
     def execute(self) -> APIResponse:
-        """
-        Load and return the mock response.
-        Raises FileNotFoundError if no mock file exists alongside
-        the definition — this is intentional to force mock creation.
-        """
         if not self.mock_path.exists():
             raise FileNotFoundError(
-                f"Mock file not found: {self.mock_path}\n"
+                f"Response file not found: {self.mock_path}\n"
                 f"Create it alongside: {self.definition_path}\n"
-                f"See CLAUDE.md API definition pattern for format."
+                f"Convention: {self.definition_path.stem.replace('_request', '_response')}.json"
             )
-
         suffix = self.mock_path.suffix.lower()
         if suffix == ".json":
             return self._load_json_mock()
@@ -58,17 +52,17 @@ class MockClient:
         else:
             raise ValueError(f"Unsupported mock format: {suffix}")
 
-    # ── loaders ───────────────────────────────────────────────────
+    # -- loaders -------------------------------------------------------
 
     def _load_json_mock(self) -> APIResponse:
         data = json.loads(self.mock_path.read_text(encoding="utf-8"))
         return APIResponse(
-            status        = data.get("status", 200),
-            body          = data.get("body", {}),
-            response_time = float(data.get("response_time_ms", 50)),
-            text          = json.dumps(data.get("body", {})),
-            headers       = data.get("headers", {}),
-            mocked        = True,
+            status=data.get("status", 200),
+            body=data.get("body", {}),
+            response_time=float(data.get("response_time_ms", 50)),
+            text=json.dumps(data.get("body", {})),
+            headers=data.get("headers", {}),
+            mocked=True,
         )
 
     def _load_xml_mock(self) -> APIResponse:
@@ -79,39 +73,50 @@ class MockClient:
         except ET.ParseError:
             body = text
 
-        # SOAP mock files optionally include a status element
         status = 200
+        resp_time = 50.0
         if isinstance(body, dict):
             status = int(body.pop("__status__", 200))
             resp_time = float(body.pop("__response_time_ms__", 50))
-        else:
-            resp_time = 50.0
 
         return APIResponse(
-            status        = status,
-            body          = body,
-            response_time = resp_time,
-            text          = text,
-            mocked        = True,
+            status=status,
+            body=body,
+            response_time=resp_time,
+            text=text,
+            mocked=True,
         )
 
-    # ── helpers ───────────────────────────────────────────────────
+    # -- mock file resolution ------------------------------------------
 
     def _find_mock_file(self) -> Path:
         """
-        Build mock file path by inserting _mock before the extension.
-        property_search.json → property_search_mock.json
+        Resolve the paired response file from the request file name.
+
+        Convention:
+            posts_list_request.json -> posts_list_response.json
+            cat_image_request.json  -> cat_image_response.json
+
+        For SOAP:
+            property_request.xml    -> property_response.xml
         """
-        stem   = self.definition_path.stem
+        stem = self.definition_path.stem
         suffix = self.definition_path.suffix
-        return self.definition_path.parent / f"{stem}_mock{suffix}"
+        parent = self.definition_path.parent
+
+        # new convention: swap _request -> _response
+        if stem.endswith("_request"):
+            response_stem = stem[: -len("_request")] + "_response"
+            return parent / f"{response_stem}{suffix}"
+
+        # legacy fallback: {stem}_mock.{suffix} (backward compatibility)
+        return parent / f"{stem}_mock{suffix}"
 
     @staticmethod
     def _xml_to_dict(element: ET.Element) -> dict:
-        """Recursively convert XML element tree to a plain dict."""
         result = {}
         for child in element:
-            tag   = child.tag.split("}")[-1]   # strip namespace
+            tag = child.tag.split("}")[-1]
             value = MockClient._xml_to_dict(child) if len(child) else child.text
             if tag in result:
                 if not isinstance(result[tag], list):

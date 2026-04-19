@@ -1,12 +1,8 @@
-TC1 - Navigate to http://trademe.co.nz/a/property/residential/sale
-Click on the search box
-And type Wellington homes
-And click Search button
-This will show the results for Wellington homes
+Test 1: Search for property in Wellington
+Navigate to Trade Me property search - https://www.trademe.co.nz/a/property/residential/sale
+Search for "Wellington homes"
+Expect results to appear
 
-TC2 - On the results page
-Click Price dropdown
-And Change the From value to 100k from the drop down
-And Change the To value to 800k from the drop down
-And Click View <number of> Results button
-This will show the refined results
+Test 2: Filter by price
+Apply price filter 500k to 800k
+Results should only show properties in that range

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    testCases/api/soap/number_conversion_request.xml
+
+    SOAP test definition - Number Conversion Service
+    WSDL: https://www.dataaccess.com/webservicesserver/numberconversion.wso?WSDL
+
+    Operation : NumberToWords
+    Input     : ubiNum (unsigned long) - the number to convert
+    Output    : NumberToWordsResult (string) - e.g. "forty two"
+
+    Pair:
+      number_conversion_request.xml  (what you send)
+      number_conversion_response.xml (pre-recorded mock response)
+-->
+<test>
+  <wsdl_url>https://www.dataaccess.com/webservicesserver/numberconversion.wso?WSDL</wsdl_url>
+  <operation>NumberToWords</operation>
+  <auth/>
+  <params>
+    <ubiNum>42</ubiNum>
+  </params>
+  <expected>
+    <status>200</status>
+    <response_time_ms>8000</response_time_ms>
+    <contains_text>forty two</contains_text>
+  </expected>
+</test>

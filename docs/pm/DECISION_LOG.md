@@ -247,5 +247,122 @@ the framework. Roadmap for v4.
 
 ---
 
-*Last updated: v1.0.0 shipped. All decisions above were made during
-the 4-day build. Revisit on any major framework version change.*
+---
+
+## ADR-009 — XPath-only locators (no CSS class selectors)
+
+**Decision:** All locators use XPath exclusively. CSS class selectors are banned.
+
+**Alternatives considered:** CSS selectors (default Playwright), mixed CSS + XPath
+
+**Reasoning:**
+Modern JavaScript frameworks (React, Angular, Next.js) generate auto-scoped class
+names (`sc-abc123`, `css-xyz`) that change on every build. CSS class selectors built
+on these names fail silently after any frontend dependency update.
+
+XPath selectors targeting semantic attributes (`data-testid`, `aria-label`, `placeholder`,
+`name`) survive CSS refactors because they are anchored to the element's meaning, not
+its styling class. This directly reduces the locator failure rate that Agent 3 has to heal.
+
+**Selector priority enforced in all locator files:**
+`data-testid` > `aria-label` > `placeholder` > `name` > `normalize-space()` text > structural XPath
+
+**Trade-off accepted:** XPath is more verbose than CSS. The readability cost is worth
+the stability gain in CI.
+
+---
+
+## ADR-010 — temperature=0 for all AI agent calls
+
+**Decision:** All `BaseAgent` calls to Anthropic and Gemini use `temperature=0`.
+
+**Alternatives considered:** Default temperature (~1.0), temperature=0.2
+
+**Reasoning:**
+The framework's core promise is deterministic test generation: the same intake file must
+always produce the same feature file, step definitions, and locator skeleton. With default
+temperature the AI varies its phrasing, value formatting, and structure between runs,
+making diffs noisy and CI comparisons unreliable.
+
+Temperature=0 eliminates this variance. The AI becomes a pure function: same input →
+same output. This also makes the DATA block extraction in Agent 1 reliable — the AI
+copies values verbatim rather than paraphrasing them.
+
+**Trade-off accepted:** Temperature=0 reduces creative variation. For test generation
+this is a feature, not a bug.
+
+---
+
+## ADR-011 — DATA: block in intake format for deterministic test values
+
+**Decision:** Agent 1 extracts all concrete test values into an explicit `DATA:` block.
+
+**Alternatives considered:** Embedding values inline in GIVEN/WHEN/THEN text,
+separate CSV data file, no structured data section
+
+**Reasoning:**
+Without an explicit data section, Agent 2 must infer test values from the WHEN/THEN
+prose. This caused two problems: (1) values were paraphrased (`$500,000` → `500000`),
+and (2) the same logical test produced different Gherkin parameters on different runs.
+
+The `DATA:` block creates a machine-readable contract between Agent 1 and Agent 2.
+Agent 2 is instructed to copy values verbatim from `DATA:` into Gherkin step parameters.
+If a value is not specified in the intake file, `FILL_ME` is written — making missing
+data visible rather than silently invented.
+
+**Impact:** DataFactory is also generated from the DATA blocks, giving tests a single
+source of truth for test data values.
+
+---
+
+## ADR-012 — ApprovalGateway as the agentic orchestrator
+
+**Decision:** `approval_gateway.py` is the single entry point for post-run failure routing.
+
+**Alternatives considered:** Direct Agent 3/4 invocation from conftest.py,
+LangChain/LangGraph orchestration, separate CI pipeline step
+
+**Reasoning:**
+The framework has four agents with different responsibilities. Without an orchestrator,
+a QA engineer must manually decide which agent to run after each failure — a cognitive
+load that defeats the purpose of agentic automation.
+
+The ApprovalGateway reads `failures.json`, classifies failures by category, and routes
+each automatically: `locator` → Agent 3 (with APPROVE gate), `api_timeout` → retry
+guidance, `logic` → Agent 4 fix plan, `flaky` → quarantine registry,
+`environment` → escalation report.
+
+LangChain/LangGraph was considered but rejected as over-engineering for v1. The routing
+logic is a simple decision table — no graph traversal or chain-of-thought needed.
+Custom Python is simpler, more maintainable, and has zero additional dependencies.
+
+**Human-in-the-loop preserved:** The orchestrator decides automatically, but every
+file patch still requires explicit APPROVE. Auto-commit is never performed.
+
+---
+
+## ADR-013 — domcontentloaded over networkidle for page load waits
+
+**Decision:** `utils/actions.py wait_for_page_load()` uses `domcontentloaded` with a
+500ms hydration pause, not `networkidle`.
+
+**Alternatives considered:** `networkidle`, `load`, fixed `time.sleep()`
+
+**Reasoning:**
+Sites with continuous analytics, ad scripts, or WebSocket connections (e.g. Trade Me)
+never reach `networkidle` because background network traffic never stops. Using
+`networkidle` caused every test to time out after 10 seconds on these sites.
+
+`domcontentloaded` fires when the HTML is parsed and the DOM is ready — which is the
+correct signal for "the page is interactive". A 500ms pause after DOM ready absorbs
+JavaScript framework hydration (React/Angular mounting their component trees) without
+blocking on background network traffic.
+
+`time.sleep()` was rejected because it adds fixed latency regardless of page state.
+`load` (all resources including images/fonts) is slower than `domcontentloaded` and
+still blocks on slow CDN resources not needed for test interactions.
+
+---
+
+*Last updated: post v1.0.0 — agents, orchestrator, deterministic pipeline, XPath-only
+locators, and conftest AUTO_HEAL hook. Revisit on any major framework version change.*
